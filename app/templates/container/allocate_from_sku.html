@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Allocate {{ sku.jj_sku }} to Container{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Allocate SKU to Container</h2>
+    <p class="page-subtitle">
+      {{ sku.jj_sku }} — {{ sku.product_name }} &nbsp;|&nbsp;
+      PO: {{ sku.po_number }} &nbsp;|&nbsp;
+      Pending: <strong>{{ sku.pending_ctns or '—' }} ctns
+      / {{ sku.pending_qty }} units</strong>
+    </p>
+  </div>
+  <a href="{{ url_for('po.detail', po_number=sku.po_number) }}"
+     class="btn btn-secondary">← Back to PO</a>
+</div>
+
+{% if sku.ci_pending_acknowledgement %}
+<div class="flash flash-warning" style="margin-bottom:1rem;">
+  ⚠ CI not yet acknowledged for this SKU. Allocation is permitted at
+  planning stage but the container cannot be confirmed until CI is
+  acknowledged.
+</div>
+{% endif %}
+
+<div class="form-card" style="max-width:480px;">
+  <form method="POST">
+    <div class="form-group">
+      <label>Select Container <span style="color:#dc2626;">*</span></label>
+      <select name="container_id" required>
+        <option value="">— Select container —</option>
+        {% for c in containers %}
+        <option value="{{ c.container_id }}">
+          {{ c.container_id }}
+          ({{ c.shipment_type or '?' }}) —
+          {{ c.cbm_remaining or '?' }} CBM remaining
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>
+        Number of Cartons to Allocate
+        <span style="color:#dc2626;">*</span>
+        <span class="hint">
+          (max {{ sku.pending_ctns or '?' }} cartons pending)
+        </span>
+      </label>
+      <input type="number" name="allocated_ctns" required
+             min="1" max="{{ sku.pending_ctns or 9999 }}"
+             placeholder="Enter cartons">
+    </div>
+    {% if sku.outer_carton_qty %}
+    <div class="phase-banner" style="font-size:12px;margin-bottom:1rem;">
+      {{ sku.outer_carton_qty }} units per carton &nbsp;|&nbsp;
+      CBM per carton:
+      {{ "%.6f"|format(sku.volumetric_cbm) if sku.volumetric_cbm else '—' }}
+    </div>
+    {% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Allocate</button>
+      <a href="{{ url_for('po.detail', po_number=sku.po_number) }}"
+         class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

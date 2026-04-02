@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Purchase Orders{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Purchase Orders</h2>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('po.import_pos') }}" class="btn btn-secondary">&#8679; Import CSV</a>
+    <a href="{{ url_for('po.create_po') }}" class="btn btn-primary">+ New PO</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" action="{{ url_for('po.list_pos') }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <input type="text" name="supplier" placeholder="Search supplier..."
+           value="{{ supplier_filter }}" style="width:200px;">
+    <select name="status">
+      <option value="">All Statuses</option>
+      <option value="Active"      {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+      <option value="On Hold"     {% if status_filter == 'On Hold' %}selected{% endif %}>On Hold</option>
+      <option value="Cancelled"   {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{{ url_for('po.list_pos') }}" class="btn btn-secondary">Clear</a>
+  </form>
+</div>
+
+<div class="stats-grid" style="margin:1rem 0;">
+  <div class="stat-card">
+    <div class="stat-label">Total POs</div>
+    <div class="stat-value">{{ pos|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active</div>
+    <div class="stat-value">{{ pos|selectattr('po_status','eq','Active')|list|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">On Hold</div>
+    <div class="stat-value" style="color:#d97706;">{{ pos|selectattr('po_status','eq','On Hold')|list|length }}</div>
+  </div>
+  <div class="stat-card stat-highlight">
+    <div class="stat-label">CI Variances</div>
+    <div class="stat-value" style="color:#dc2626;">{{ pos|selectattr('has_ci_variance')|list|length }}</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>PO Number</th>
+        <th>Supplier</th>
+        <th>PI Number</th>
+        <th>CI Number</th>
+        <th>Currency</th>
+        <th>Status</th>
+        <th>SKUs</th>
+        <th>Buying QTY</th>
+        <th>Allocated</th>
+        <th>Pending</th>
+        <th>Total CBM</th>
+        <th>Amount</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for po in pos %}
+      <tr {% if po.po_status == 'Cancelled' %}class="row-inactive"{% endif %}>
+        <td>
+          <a href="{{ url_for('po.detail', po_number=po.po_number) }}"
+             style="font-weight:600;color:#2563eb;text-decoration:none;font-family:monospace;">
+            {{ po.po_number }}
+          </a>
+          {% if po.has_ci_variance %}
+          <span class="badge badge-warning" title="CI Variance — review required">⚠ CI</span>
+          {% endif %}
+        </td>
+        <td>{{ po.supplier_name }}</td>
+        <td class="td-mono td-muted">{{ po.pi_number or '—' }}</td>
+        <td class="td-mono td-muted">{{ po.ci_number or '—' }}</td>
+        <td>{{ po.currency or '—' }}</td>
+        <td>
+          {% if po.po_status == 'Active' %}
+            <span class="badge badge-success">Active</span>
+          {% elif po.po_status == 'On Hold' %}
+            <span class="badge badge-warning">On Hold</span>
+          {% else %}
+            <span class="badge badge-danger">Cancelled</span>
+          {% endif %}
+          {% set ds = po.derived_status %}
+          {% if ds == 'Fully Allocated' %}
+            <span class="badge badge-info">Fully Allocated</span>
+          {% elif ds == 'Partially Shipped' %}
+            <span class="badge badge-info" style="background:#ede9fe;color:#5b21b6;">Partial</span>
+          {% endif %}
+        </td>
+        <td>{{ po.skus|length }}</td>
+        <td>{{ po.total_buying_qty or 0 }}</td>
+        <td>{{ po.total_allocated_qty or 0 }}</td>
+        <td>
+          {% if po.total_pending_qty %}
+            <strong style="color:#d97706;">{{ po.total_pending_qty }}</strong>
+          {% else %}
+            <span style="color:#059669;">0</span>
+          {% endif %}
+        </td>
+        <td class="td-mono">{{ po.total_cbm or '—' }}</td>
+        <td class="td-mono">
+          {% if po.total_amount %}
+            {{ po.currency }} {{ "%.2f"|format(po.total_amount) }}
+          {% else %}—{% endif %}
+        </td>
+        <td class="td-actions">
+          <a href="{{ url_for('po.detail', po_number=po.po_number) }}" class="btn btn-sm btn-secondary">View</a>
+          <a href="{{ url_for('po.edit_po', po_number=po.po_number) }}" class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="13" class="empty-state">No purchase orders found. Import a CSV or create one manually.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit SKU' if sku else 'Add SKU' }}{% endblock %}
+{% block content %}
+
+{% set show_ci_modal = sku and sku.ci_pending_acknowledgement %}
+
+<div class="page-header">
+  <div>
+    <h2>{{ 'Edit SKU — ' + (sku.jj_sku or sku.product_name) if sku else 'Add SKU to ' + po.po_number }}</h2>
+    {% if sku %}
+    <p class="page-subtitle">
+      Current Status:
+      {% set s = sku.sku_status %}
+      {% if s == 'Ready for Allocation' %}<span class="badge badge-success">{{ s }}</span>
+      {% elif s == 'Fully Allocated' %}<span class="badge badge-info">{{ s }}</span>
+      {% elif s == 'Partially Allocated' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">{{ s }}</span>
+      {% elif s in ['Awaiting Production','Pending Date','On Hold'] %}<span class="badge badge-warning">{{ s }}</span>
+      {% else %}<span class="badge badge-danger">{{ s }}</span>{% endif %}
+      &nbsp;<span class="hint">Computed automatically — not editable directly.</span>
+      {% if sku.ci_pending_acknowledgement %}
+      &nbsp;<span class="badge badge-warning">⚠ CI Pending Acknowledgement</span>
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:8px;">
+    {% if sku %}
+    <a href="{{ url_for('po.sku_history', po_number=po.po_number, sku_id=sku.id) }}"
+       class="btn btn-secondary">&#9776; History</a>
+    {% endif %}
+    <a href="{{ url_for('po.detail', po_number=po.po_number) }}"
+       class="btn btn-secondary">← Back</a>
+  </div>
+</div>
+
+<div class="form-card" style="max-width:780px;">
+  <form method="POST" id="sku-form">
+
+    <h3 class="form-section-title" style="color:#1b3a5c;">SKU Identity</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>JJ SKU <span style="color:#dc2626;">*</span></label>
+        <input type="text" name="jj_sku" required
+               value="{{ sku.jj_sku if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Supplier SKU</label>
+        <input type="text" name="supplier_sku"
+               value="{{ sku.supplier_sku if sku else '' }}">
+      </div>
+      <div class="form-group" style="grid-column:span 2;">
+        <label>Product Name <span style="color:#dc2626;">*</span></label>
+        <input type="text" name="product_name" required
+               value="{{ sku.product_name if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Shipment Type</label>
+        <select name="shipment_type">
+          <option value="">— Select —</option>
+          {% for t in ['FCL','LCL','BCN'] %}
+          <option value="{{ t }}"
+            {{ 'selected' if sku and sku.shipment_type == t }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>HS Code <span class="hint">(per product)</span></label>
+        <input type="text" name="hs_code"
+               value="{{ sku.hs_code if sku else '' }}"
+               placeholder="e.g. 9403.20">
+      </div>
+      <div class="form-group">
+        <label>Cargo Ready Date
+          <span class="hint">(drives status)</span>
+        </label>
+        <input type="date" name="cargo_ready_date"
+               value="{{ sku.cargo_ready_date.strftime('%Y-%m-%d') if sku and sku.cargo_ready_date else '' }}">
+      </div>
+    </div>
+
+    <hr class="form-divider">
+    <h3 class="form-section-title" style="color:#1e40af;">Order (PI)</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>Buying Price ({{ po.currency or 'USD' }})</label>
+        <input type="number" step="0.0001" name="buying_price"
+               value="{{ sku.buying_price if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Buying QTY</label>
+        <input type="number" name="buying_qty" min="0"
+               value="{{ sku.buying_qty if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Outer Carton QTY <span class="hint">(units/ctn)</span></label>
+        <input type="number" name="outer_carton_qty" min="1"
+               value="{{ sku.outer_carton_qty if sku else '' }}">
+      </div>
+    </div>
+    {% if sku and sku.no_of_ctns %}
+    <div class="phase-banner" style="margin-bottom:1rem;font-size:12px;">
+      <strong>Auto-calculated:</strong> &nbsp;
+      No. of Ctns: <strong>{{ sku.no_of_ctns }}</strong> &nbsp;|&nbsp;
+      Total Units: <strong>{{ sku.total_units }}</strong>
+      {% if sku.total_units and sku.buying_qty and sku.total_units != sku.buying_qty %}
+        <span class="badge badge-warning">≠ {{ sku.buying_qty }} ordered</span>
+      {% endif %}
+      &nbsp;|&nbsp; Total CBM: <strong>{{ sku.total_cbm or '—' }}</strong>
+      &nbsp;|&nbsp; Amount: <strong>{{ po.currency }} {{ "%.2f"|format(sku.amount) if sku.amount else '—' }}</strong>
+    </div>
+    {% endif %}
+
+    <hr class="form-divider">
+    <h3 class="form-section-title" style="color:#065f46;">
+      Receipt (CI)
+      <span class="hint" style="text-transform:none;font-weight:400;font-size:12px;">
+        — populate when CI received
+      </span>
+      {% if sku and sku.ci_variance_acknowledged %}
+        <span class="badge badge-success" style="margin-left:8px;">&#10003; Acknowledged</span>
+      {% elif sku and sku.ci_pending_acknowledgement %}
+        <span class="badge badge-warning" style="margin-left:8px;">⚠ Pending acknowledgement</span>
+      {% endif %}
+    </h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>CI Price ({{ po.currency or 'USD' }})</label>
+        <input type="number" step="0.0001" name="ci_price" id="ci_price"
+               value="{{ sku.ci_price if sku and sku.ci_price else '' }}">
+      </div>
+      <div class="form-group">
+        <label>CI QTY</label>
+        <input type="number" name="ci_qty" id="ci_qty" min="0"
+               value="{{ sku.ci_qty if sku and sku.ci_qty else '' }}">
+      </div>
+    </div>
+
+    <hr class="form-divider">
+    <h3 class="form-section-title" style="color:#374151;">Dimensions (Outer Carton)</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>Length (cm)</label>
+        <input type="number" step="0.001" name="length_cm"
+               value="{{ sku.length_cm if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Width (cm)</label>
+        <input type="number" step="0.001" name="width_cm"
+               value="{{ sku.width_cm if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Height (cm)</label>
+        <input type="number" step="0.001" name="height_cm"
+               value="{{ sku.height_cm if sku else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Weight (kg)</label>
+        <input type="number" step="0.001" name="weight_kg"
+               value="{{ sku.weight_kg if sku else '' }}">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" id="save-btn">
+        {{ 'Save Changes' if sku else 'Add SKU' }}
+      </button>
+      <a href="{{ url_for('po.detail', po_number=po.po_number) }}"
+         class="btn btn-secondary">Cancel</a>
+      {% if sku %}
+      <form method="POST"
+            action="{{ url_for('po.delete_sku', po_number=po.po_number, sku_id=sku.id) }}"
+            style="display:inline;"
+            onsubmit="return confirm('Delete SKU {{ sku.jj_sku }}? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger">Delete SKU</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Hidden acknowledge field — set by modal -->
+    <input type="hidden" name="acknowledge_ci" id="acknowledge_ci_input" value="">
+
+  </form>
+</div>
+
+<!-- ── CI Modal ────────────────────────────────────────────────────────── -->
+<div id="ci-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:500px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <span style="font-size:24px;">⚠</span>
+      <h3 style="color:#92400e;">CI Receipt — Action Required</h3>
+    </div>
+
+    <div id="modal-variance-detail"
+         style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;
+                padding:12px;margin-bottom:16px;font-size:13px;line-height:1.8;">
+    </div>
+
+    <p style="font-size:13px;color:#374151;margin-bottom:16px;line-height:1.6;">
+      Allocation is permitted at planning stage.
+      However, <strong>this container cannot be Confirmed or Shipped</strong>
+      until this CI is acknowledged.
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn btn-primary" onclick="acknowledgeAndSave()"
+              style="width:100%;padding:10px;">
+        &#10003; Acknowledge CI &amp; Save
+      </button>
+      <button class="btn btn-secondary" onclick="saveWithoutAcknowledge()"
+              style="width:100%;">
+        Save without acknowledging
+        <span style="font-size:11px;display:block;color:#64748b;">
+          Warning badge will remain on SKU row
+        </span>
+      </button>
+      <button class="btn btn-secondary" onclick="closeModal()"
+              style="width:100%;">
+        Cancel — go back to edit
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Values at page load — used to detect changes
+  const origCiPrice = "{{ sku.ci_price if sku and sku.ci_price else '' }}";
+  const origCiQty   = "{{ sku.ci_qty if sku and sku.ci_qty else '' }}";
+  const buyingPrice = {{ sku.buying_price if sku and sku.buying_price else 'null' }};
+  const buyingQty   = {{ sku.buying_qty if sku and sku.buying_qty else 0 }};
+  const alreadyAcknowledged = {{ 'true' if sku and sku.ci_variance_acknowledged else 'false' }};
+  const hasPendingOnLoad    = {{ 'true' if show_ci_modal else 'false' }};
+
+  function buildVarianceDetail(ciPrice, ciQty) {
+    let html = '';
+    if (ciPrice && buyingPrice && parseFloat(ciPrice) !== buyingPrice) {
+      const diff = (parseFloat(ciPrice) - buyingPrice).toFixed(4);
+      html += `<div><strong>Price variance:</strong> Buying {{ po.currency }} ${buyingPrice}
+               → CI {{ po.currency }} ${parseFloat(ciPrice).toFixed(4)}
+               &nbsp;<span style="color:#dc2626;font-weight:700;">(${diff})</span></div>`;
+    }
+    if (ciQty && parseInt(ciQty) !== buyingQty) {
+      const diff = parseInt(ciQty) - buyingQty;
+      html += `<div><strong>QTY variance:</strong> Buying ${buyingQty}
+               → CI ${ciQty}
+               &nbsp;<span style="color:#dc2626;font-weight:700;">(${diff > 0 ? '+' : ''}${diff})</span></div>`;
+    }
+    if (!html) {
+      html = `<div>CI receipt entered: Price {{ po.currency }} ${ciPrice || '—'},
+              QTY ${ciQty || '—'}. Please acknowledge to confirm.</div>`;
+    }
+    return html;
+  }
+
+  function openModal() {
+    const ciPrice = document.getElementById('ci_price').value;
+    const ciQty   = document.getElementById('ci_qty').value;
+    document.getElementById('modal-variance-detail').innerHTML =
+      buildVarianceDetail(ciPrice, ciQty);
+    document.getElementById('ci-modal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('ci-modal').style.display = 'none';
+  }
+
+  function acknowledgeAndSave() {
+    document.getElementById('acknowledge_ci_input').value = '1';
+    document.getElementById('ci-modal').style.display = 'none';
+    document.getElementById('sku-form').submit();
+  }
+
+  function saveWithoutAcknowledge() {
+    document.getElementById('acknowledge_ci_input').value = '';
+    document.getElementById('ci-modal').style.display = 'none';
+    document.getElementById('sku-form').submit();
+  }
+
+  // Intercept form submit — show modal if CI values present and not acknowledged
+  document.getElementById('save-btn').addEventListener('click', function(e) {
+    const ciPrice = document.getElementById('ci_price').value.trim();
+    const ciQty   = document.getElementById('ci_qty').value.trim();
+    const ciChanged = ciPrice !== origCiPrice || ciQty !== origCiQty;
+    const hasCiData = ciPrice !== '' || ciQty !== '';
+
+    if (hasCiData && !alreadyAcknowledged && (ciChanged || hasPendingOnLoad)) {
+      e.preventDefault();
+      openModal();
+    }
+  });
+
+  // Auto-open modal on page load if CI pending acknowledgement
+  {% if show_ci_modal %}
+  window.addEventListener('load', function() {
+    openModal();
+  });
+  {% endif %}
+</script>
+{% endblock %}

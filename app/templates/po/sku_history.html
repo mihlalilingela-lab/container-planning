@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}SKU History — {{ sku.jj_sku }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>SKU History — {{ sku.jj_sku or sku.product_name }}</h2>
+    <p class="page-subtitle">
+      {{ sku.product_name }} &nbsp;|&nbsp; PO: {{ po.po_number }} &nbsp;|&nbsp;
+      {{ po.supplier_name }} &nbsp;|&nbsp;
+      Current Status:
+      {% set s = sku.sku_status %}
+      {% if s == 'Ready for Allocation' %}<span class="badge badge-success">{{ s }}</span>
+      {% elif s == 'Fully Allocated' %}<span class="badge badge-info">{{ s }}</span>
+      {% elif s == 'Partially Allocated' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">{{ s }}</span>
+      {% elif s in ['Awaiting Production','On Hold','Pending Date'] %}<span class="badge badge-warning">{{ s }}</span>
+      {% else %}<span class="badge badge-danger">{{ s }}</span>{% endif %}
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('po.edit_sku', po_number=po.po_number, sku_id=sku.id) }}"
+       class="btn btn-secondary">Edit SKU</a>
+    <a href="{{ url_for('po.detail', po_number=po.po_number) }}"
+       class="btn btn-secondary">← Back to PO</a>
+  </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+  <div class="stat-card">
+    <div class="stat-label">Buying QTY</div>
+    <div class="stat-value">{{ sku.buying_qty or 0 }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Working QTY</div>
+    <div class="stat-value">{{ sku.total_order_qty or 0 }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Allocated QTY</div>
+    <div class="stat-value" style="color:#2563eb;">{{ sku.allocated_qty or 0 }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Pending QTY</div>
+    <div class="stat-value" style="color:#d97706;">{{ sku.pending_qty or 0 }}</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="section-card-header">
+    <h3>Change History</h3>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>User</th>
+        <th>Action</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in history %}
+      <tr>
+        <td class="td-mono">
+          {{ entry.timestamp.strftime('%d %b %Y %H:%M:%S') }}
+        </td>
+        <td><strong>{{ entry.username }}</strong></td>
+        <td>
+          <span class="badge badge-{{ entry.action | lower }}">
+            {{ entry.action }}
+          </span>
+        </td>
+        <td>{{ entry.detail or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" class="empty-state">No history recorded yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

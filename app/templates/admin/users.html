@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>User Management</h2>
+  <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">+ Create User</a>
+</div>
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr {% if not user.is_active %}class="row-inactive"{% endif %}>
+        <td><strong>{{ user.username }}</strong>{% if user.id == current_user.id %} <span class="badge badge-info">You</span>{% endif %}</td>
+        <td>{{ user.email }}</td>
+        <td><span class="badge badge-role">{{ user.role | replace('_', ' ') | title }}</span></td>
+        <td>
+          {% if user.is_active %}<span class="badge badge-success">Active</span>
+          {% else %}<span class="badge badge-danger">Inactive</span>{% endif %}
+          {% if user.must_change_password %}<span class="badge badge-warning">Must change pw</span>{% endif %}
+        </td>
+        <td class="td-mono td-muted">{{ user.last_login.strftime('%d %b %Y %H:%M') if user.last_login else 'Never' }}</td>
+        <td class="td-actions">
+          {% if user.id != current_user.id %}
+          <form method="POST" action="{{ url_for('admin.toggle_user', user_id=user.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm {% if user.is_active %}btn-warning{% else %}btn-success{% endif %}">
+              {{ 'Deactivate' if user.is_active else 'Activate' }}
+            </button>
+          </form>
+          <button class="btn btn-sm btn-secondary" onclick="showReset({{ user.id }}, '{{ user.username }}')">Reset PW</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div style="margin-top:1.5rem;">
+  <a href="{{ url_for('admin.audit_log') }}" class="btn btn-secondary">View Audit Log</a>
+</div>
+<div id="reset-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3>Reset Password</h3>
+    <p id="reset-subtitle" class="td-muted"></p>
+    <form id="reset-form" method="POST">
+      <div class="form-group">
+        <label>New Temporary Password <span class="hint">(min 8 characters)</span></label>
+        <input type="password" name="new_password" id="reset-pw" required minlength="8">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Reset Password</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('reset-modal').style.display='none'">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function showReset(userId, username) {
+  document.getElementById('reset-modal').style.display = 'flex';
+  document.getElementById('reset-subtitle').textContent = 'Resetting password for: ' + username;
+  document.getElementById('reset-form').action = '/admin/users/' + userId + '/reset-password';
+  document.getElementById('reset-pw').value = '';
+  document.getElementById('reset-pw').focus();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Dashboard</h2>
+  <p class="page-subtitle">Welcome, {{ current_user.username }}. Phase 1 foundation is running.</p>
+</div>
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Purchase Orders</div>
+    <div class="stat-value">{{ stats.total_pos }}</div>
+    <div class="stat-note">Total in system</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">SKUs</div>
+    <div class="stat-value">{{ stats.total_skus }}</div>
+    <div class="stat-note">Across all POs</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Containers</div>
+    <div class="stat-value">{{ stats.total_containers }}</div>
+    <div class="stat-note">Total created</div>
+  </div>
+  <div class="stat-card stat-highlight">
+    <div class="stat-label">Active Containers</div>
+    <div class="stat-value">{{ stats.active_containers }}</div>
+    <div class="stat-note">Planning or Confirmed</div>
+  </div>
+</div>
+<div class="section-row">
+  <div class="section-card">
+    <div class="section-card-header"><h3>Quick Actions</h3></div>
+    <div class="quick-actions">
+      <div class="action-btn action-disabled">
+        <span class="action-icon">+</span>
+        <span class="action-label">New Purchase Order</span>
+        <span class="action-phase">Phase 2</span>
+      </div>
+      <div class="action-btn action-disabled">
+        <span class="action-icon">&#8679;</span>
+        <span class="action-label">Import CSV</span>
+        <span class="action-phase">Phase 2</span>
+      </div>
+      <div class="action-btn action-disabled">
+        <span class="action-icon">&#9783;</span>
+        <span class="action-label">New Container</span>
+        <span class="action-phase">Phase 3</span>
+      </div>
+      <div class="action-btn action-disabled">
+        <span class="action-icon">&#9741;</span>
+        <span class="action-label">Add Vessel</span>
+        <span class="action-phase">Phase 4</span>
+      </div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><h3>Recent Activity</h3></div>
+    {% if activity %}
+    <table class="data-table">
+      <thead>
+        <tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        {% for entry in activity %}
+        <tr>
+          <td class="td-mono">{{ entry.timestamp.strftime('%d %b %H:%M') }}</td>
+          <td>{{ entry.username }}</td>
+          <td><span class="badge badge-{{ entry.action | lower }}">{{ entry.action }}</span></td>
+          <td class="td-muted">{{ entry.detail or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No activity yet.</p>
+    {% endif %}
+  </div>
+</div>
+<div class="phase-banner">
+  <strong>Phase 1 — Foundation complete.</strong>
+  Authentication, database, and roles are active. Phase 2 (PO &amp; SKU management) is next.
+</div>
+{% endblock %}

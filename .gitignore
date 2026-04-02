@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+
+# Database — contains real data, never commit
+data/container_app.db
+data/imports/
+
+# Backups
+backups/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment files
+.env
+*.env
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Logs
+*.log

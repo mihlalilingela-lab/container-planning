@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Import Results{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Import Results</h2>
+  <a href="{{ url_for('po.list_pos') }}" class="btn btn-primary">View Purchase Orders</a>
+</div>
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+  <div class="stat-card"><div class="stat-label">Rows Processed</div><div class="stat-value">{{ results.rows_processed }}</div></div>
+  <div class="stat-card"><div class="stat-label">POs Created</div><div class="stat-value" style="color:#059669;">{{ results.pos_created }}</div></div>
+  <div class="stat-card"><div class="stat-label">POs Updated</div><div class="stat-value" style="color:#2563eb;">{{ results.pos_updated }}</div></div>
+  <div class="stat-card"><div class="stat-label">SKUs Created</div><div class="stat-value" style="color:#059669;">{{ results.skus_created }}</div></div>
+  <div class="stat-card"><div class="stat-label">SKUs Updated</div><div class="stat-value" style="color:#2563eb;">{{ results.skus_updated }}</div></div>
+  <div class="stat-card"><div class="stat-label">Warnings</div>
+    <div class="stat-value" style="color:{% if results.errors %}#dc2626{% else %}#059669{% endif %};">{{ results.errors|length }}</div>
+  </div>
+</div>
+{% if results.errors %}
+<div class="table-card">
+  <div class="section-card-header"><h3>Warnings &amp; Errors</h3></div>
+  <table class="data-table">
+    <thead><tr><th>#</th><th>Message</th></tr></thead>
+    <tbody>
+      {% for err in results.errors %}
+      <tr><td>{{ loop.index }}</td><td style="color:#92400e;">{{ err }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="flash flash-success">Import completed successfully with no warnings.</div>
+{% endif %}
+<div style="margin-top:1.5rem;display:flex;gap:8px;">
+  <a href="{{ url_for('po.import_pos') }}" class="btn btn-secondary">Import Another File</a>
+  <a href="{{ url_for('po.list_pos') }}" class="btn btn-primary">View Purchase Orders →</a>
+</div>
+{% endblock %}

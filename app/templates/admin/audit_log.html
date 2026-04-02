@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Audit Log</h2>
+  <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">← Back</a>
+</div>
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>Timestamp</th><th>User</th><th>Action</th><th>Table</th><th>Record</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for entry in logs.items %}
+      <tr>
+        <td class="td-mono">{{ entry.timestamp.strftime('%d %b %Y %H:%M:%S') }}</td>
+        <td>{{ entry.username }}</td>
+        <td><span class="badge badge-{{ entry.action | lower }}">{{ entry.action }}</span></td>
+        <td class="td-muted">{{ entry.table_name or '—' }}</td>
+        <td class="td-muted td-mono">{{ entry.record_id or '—' }}</td>
+        <td class="td-muted">{{ entry.detail or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="pagination">
+  {% if logs.has_prev %}
+  <a href="{{ url_for('admin.audit_log', page=logs.prev_num) }}" class="btn btn-secondary">← Previous</a>
+  {% endif %}
+  <span class="page-info">Page {{ logs.page }} of {{ logs.pages }}</span>
+  {% if logs.has_next %}
+  <a href="{{ url_for('admin.audit_log', page=logs.next_num) }}" class="btn btn-secondary">Next →</a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Containers{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Containers</h2>
+  <a href="{{ url_for('container.create_container') }}"
+     class="btn btn-primary">+ New Container</a>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" action="{{ url_for('container.list_containers') }}"
+        style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <select name="status">
+      <option value="">All Statuses</option>
+      {% for s in ['Planning','Confirmed','Shipped','Closed'] %}
+      <option value="{{ s }}"
+        {{ 'selected' if status_filter == s }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{{ url_for('container.list_containers') }}"
+       class="btn btn-secondary">Clear</a>
+  </form>
+</div>
+
+<div class="stats-grid" style="margin:1rem 0;">
+  <div class="stat-card">
+    <div class="stat-label">Total Containers</div>
+    <div class="stat-value">{{ containers|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Planning</div>
+    <div class="stat-value">
+      {{ containers|selectattr('status','eq','Planning')|list|length }}
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Confirmed</div>
+    <div class="stat-value" style="color:#2563eb;">
+      {{ containers|selectattr('status','eq','Confirmed')|list|length }}
+    </div>
+  </div>
+  <div class="stat-card stat-highlight">
+    <div class="stat-label">Shipped</div>
+    <div class="stat-value" style="color:#059669;">
+      {{ containers|selectattr('status','eq','Shipped')|list|length }}
+    </div>
+  </div>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Container ID</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>CBM Used</th>
+        <th>CBM Capacity</th>
+        <th>Utilisation</th>
+        <th>Planned Departure</th>
+        <th>SKUs</th>
+        <th>CI Warnings</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in containers %}
+      <tr>
+        <td>
+          <a href="{{ url_for('container.detail', container_id=c.container_id) }}"
+             style="font-weight:700;color:#2563eb;text-decoration:none;
+                    font-family:monospace;">
+            {{ c.container_id }}
+          </a>
+        </td>
+        <td>
+          {% if c.shipment_type %}
+          <span class="badge badge-info">{{ c.shipment_type }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if c.status == 'Planning' %}
+            <span class="badge badge-warning">Planning</span>
+          {% elif c.status == 'Confirmed' %}
+            <span class="badge badge-info">Confirmed</span>
+          {% elif c.status == 'Shipped' %}
+            <span class="badge badge-success">Shipped</span>
+          {% else %}
+            <span class="badge badge-danger">Closed</span>
+          {% endif %}
+        </td>
+        <td class="td-mono">{{ c.total_cbm_used }}</td>
+        <td class="td-mono">{{ c.cbm_capacity or '—' }}</td>
+        <td>
+          {% if c.cbm_utilisation_pct is not none %}
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:80px;background:#e2e8f0;border-radius:99px;height:6px;">
+              <div style="width:{{ [c.cbm_utilisation_pct,100]|min }}%;
+                          background:{% if c.cbm_utilisation_pct > 90 %}#dc2626
+                          {% elif c.cbm_utilisation_pct > 75 %}#d97706
+                          {% else %}#2563eb{% endif %};
+                          border-radius:99px;height:6px;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:600;">
+              {{ c.cbm_utilisation_pct }}%
+            </span>
+          </div>
+          {% else %}—{% endif %}
+        </td>
+        <td class="td-mono td-muted">
+          {{ c.planned_departure.strftime('%d %b %Y')
+             if c.planned_departure else '—' }}
+        </td>
+        <td>{{ c.active_allocations|length }}</td>
+        <td>
+          {% set ci_warns = c.active_allocations|selectattr(
+               'sku.ci_pending_acknowledgement')|list|length %}
+          {% if ci_warns > 0 %}
+            <span class="badge badge-warning">⚠ {{ ci_warns }}</span>
+          {% else %}
+            <span style="color:#059669;font-size:12px;">✓ Clear</span>
+          {% endif %}
+        </td>
+        <td class="td-actions">
+          <a href="{{ url_for('container.detail',
+                              container_id=c.container_id) }}"
+             class="btn btn-sm btn-secondary">View</a>
+          <a href="{{ url_for('container.edit_container',
+                              container_id=c.container_id) }}"
+             class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="10" class="empty-state">
+          No containers yet.
+          <a href="{{ url_for('container.create_container') }}">
+            Create one.
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

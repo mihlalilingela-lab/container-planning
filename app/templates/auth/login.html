@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Container Planning J&J</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="login-page">
+<div class="login-card">
+  <div class="login-header">
+    <h1>Container Planning</h1>
+    <p>J&amp;J Supply Chain &mdash; Internal System</p>
+  </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}" style="margin-bottom:12px;">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <form method="POST" action="{{ url_for('auth.login') }}">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required autofocus
+             autocomplete="username" placeholder="Enter your username">
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required
+             autocomplete="current-password" placeholder="Enter your password">
+    </div>
+    <button type="submit" class="btn btn-primary btn-full">Log In</button>
+  </form>
+  <p class="login-footer">Confidential &mdash; Internal Use Only</p>
+</div>
+</body>
+</html>

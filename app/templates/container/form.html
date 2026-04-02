@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if container else 'New' }} Container{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ 'Edit Container — ' + container.container_id if container else 'New Container' }}</h2>
+  <a href="{{ url_for('container.list_containers') }}"
+     class="btn btn-secondary">← Back</a>
+</div>
+<div class="form-card" style="max-width:560px;">
+  <form method="POST">
+    <div class="form-group">
+      <label>Container ID <span style="color:#dc2626;">*</span>
+        <span class="hint">(e.g. CN FCL 41)</span>
+      </label>
+      <input type="text" name="container_id"
+             value="{{ container.container_id if container else '' }}"
+             {{ 'readonly style=background:#f8fafc' if container else 'required' }}
+             placeholder="e.g. CN FCL 41">
+    </div>
+    <div class="form-group">
+      <label>Shipment Type</label>
+      <select name="shipment_type">
+        <option value="">— Select —</option>
+        {% for t in ['FCL','LCL','BCN'] %}
+        <option value="{{ t }}"
+          {{ 'selected' if container and container.shipment_type == t }}>
+          {{ t }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>CBM Capacity
+        <span class="hint">(select preset or enter manually)</span>
+      </label>
+      <select id="cbm-preset" onchange="applyPreset(this.value)"
+              style="margin-bottom:8px;">
+        {% for val, label in presets %}
+        <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <input type="number" step="0.01" name="cbm_capacity"
+             id="cbm-capacity"
+             value="{{ container.cbm_capacity if container else '' }}"
+             placeholder="e.g. 67.0">
+    </div>
+    <div class="form-group">
+      <label>Planned Departure</label>
+      <input type="date" name="planned_departure"
+             value="{{ container.planned_departure.strftime('%Y-%m-%d')
+                       if container and container.planned_departure else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea name="notes" rows="2">
+        {{ container.notes if container else '' }}
+      </textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        {{ 'Save Changes' if container else 'Create Container' }}
+      </button>
+      <a href="{{ url_for('container.list_containers') }}"
+         class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+function applyPreset(val) {
+  if (val) document.getElementById('cbm-capacity').value = val;
+}
+</script>
+{% endblock %}

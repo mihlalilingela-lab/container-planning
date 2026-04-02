@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if po else 'New' }} Purchase Order{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ 'Edit PO — ' + po.po_number if po else 'New Purchase Order' }}</h2>
+  <a href="{{ url_for('po.list_pos') }}" class="btn btn-secondary">← Back</a>
+</div>
+<div class="form-card" style="max-width:680px;">
+  <form method="POST">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>PO Number <span style="color:#dc2626;">*</span></label>
+        <input type="text" name="po_number"
+               value="{{ po.po_number if po else '' }}"
+               {{ 'readonly style=background:#f8fafc' if po else 'required' }}>
+      </div>
+      <div class="form-group">
+        <label>Supplier Name <span style="color:#dc2626;">*</span></label>
+        <input type="text" name="supplier_name" required
+               value="{{ po.supplier_name if po else '' }}">
+      </div>
+      <div class="form-group">
+        <label>PI Number</label>
+        <input type="text" name="pi_number"
+               value="{{ po.pi_number if po else '' }}">
+      </div>
+      <div class="form-group">
+        <label>CI Number
+          <span class="hint">(populated when CI received)</span>
+        </label>
+        <input type="text" name="ci_number"
+               value="{{ po.ci_number if po else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Currency</label>
+        <select name="currency">
+          {% for cur in ['USD','CNY','EUR','GBP','ZAR'] %}
+          <option value="{{ cur }}"
+            {{ 'selected' if (po and po.currency == cur) or
+               (not po and cur == 'USD') }}>{{ cur }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>PO Status</label>
+        <select name="po_status">
+          {% for s in ['Active','On Hold','Cancelled'] %}
+          <option value="{{ s }}"
+            {{ 'selected' if po and po.po_status == s }}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea name="notes" rows="3">{{ po.notes if po else '' }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        {{ 'Save Changes' if po else 'Create PO' }}
+      </button>
+      <a href="{{ url_for('po.list_pos') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

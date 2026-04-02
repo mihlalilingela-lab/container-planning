@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}{{ container.container_id }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h2>{{ container.container_id }}
+      {% if container.status == 'Planning' %}<span class="badge badge-warning">Planning</span>
+      {% elif container.status == 'Confirmed' %}<span class="badge badge-info">Confirmed</span>
+      {% elif container.status == 'Shipped' %}<span class="badge badge-success">Shipped</span>
+      {% else %}<span class="badge badge-danger">Closed</span>{% endif %}
+      {% if container.shipment_type %}<span class="badge badge-info">{{ container.shipment_type }}</span>{% endif %}
+    </h2>
+    <p class="page-subtitle">
+      Planned departure: {{ container.planned_departure.strftime('%d %b %Y') if container.planned_departure else '—' }}
+      {% if container.notes %} &nbsp;|&nbsp; {{ container.notes }}{% endif %}
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if container.status == 'Planning' %}
+    <a href="{{ url_for('container.allocate', container_id=container.container_id) }}" class="btn btn-primary">+ Allocate SKUs</a>
+    {% endif %}
+    <a href="{{ url_for('container.edit_container', container_id=container.container_id) }}" class="btn btn-secondary">Edit</a>
+    <a href="{{ url_for('container.list_containers') }}" class="btn btn-secondary">← Back</a>
+  </div>
+</div>
+
+<!-- CBM bar -->
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:13px;font-weight:600;color:#1b3a5c;">CBM Utilisation</span>
+    <span style="font-size:13px;font-weight:700;color:#1b3a5c;">
+      {{ container.total_cbm_used }} / {{ container.cbm_capacity or '?' }} CBM
+      {% if container.cbm_utilisation_pct is not none %}&nbsp;({{ container.cbm_utilisation_pct }}%){% endif %}
+    </span>
+  </div>
+  {% if container.cbm_capacity %}
+  <div style="background:#e2e8f0;border-radius:99px;height:12px;">
+    {% set pct = [container.cbm_utilisation_pct or 0, 100]|min %}
+    <div style="width:{{ pct }}%;height:12px;border-radius:99px;background:{% if pct > 90 %}#dc2626{% elif pct > 75 %}#d97706{% else %}#2563eb{% endif %};transition:width 0.3s;"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#64748b;">
+    <span>0 CBM</span>
+    {% if container.cbm_remaining is not none %}
+    <span style="color:#059669;font-weight:600;">{{ container.cbm_remaining }} CBM remaining</span>
+    {% endif %}
+    <span>{{ container.cbm_capacity }} CBM</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Status controls -->
+{% if container.status != 'Closed' %}
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:1.5rem;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+  <span style="font-size:13px;font-weight:500;color:#374151;">Change status:</span>
+  {% if container.status == 'Planning' %}
+    {% if can_confirm %}
+    <form method="POST" action="{{ url_for('container.change_status', container_id=container.container_id) }}" onsubmit="return confirm('Confirm this container?')">
+      <input type="hidden" name="new_status" value="Confirmed">
+      <button type="submit" class="btn btn-primary">Mark as Confirmed →</button>
+    </form>
+    {% else %}
+    <span class="tooltip-wrap">
+      <button class="btn btn-secondary" disabled style="opacity:0.5;cursor:not-allowed;">Cannot Confirm</button>
+      <span class="tooltip-text">Unacknowledged CI on {{ blocking_skus|length }} SKU(s)</span>
+    </span>
+    <span style="font-size:12px;color:#dc2626;">⚠ {{ blocking_skus|length }} SKU(s) have unacknowledged CI</span>
+    {% endif %}
+  {% elif container.status == 'Confirmed' %}
+  <form method="POST" action="{{ url_for('container.change_status', container_id=container.container_id) }}" onsubmit="return confirm('Mark as Shipped?')">
+    <input type="hidden" name="new_status" value="Shipped">
+    <button type="submit" class="btn btn-success">Mark as Shipped →</button>
+  </form>
+  {% elif container.status == 'Shipped' %}
+  <form method="POST" action="{{ url_for('container.change_status', container_id=container.container_id) }}" onsubmit="return confirm('Close this container?')">
+    <input type="hidden" name="new_status" value="Closed">
+    <button type="submit" class="btn btn-secondary">Close Container →</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Blocking SKUs -->
+{% if blocking_skus %}
+<div class="flash flash-warning" style="margin-bottom:1rem;flex-direction:column;align-items:flex-start;gap:6px;">
+  <strong>⚠ Unacknowledged CI — must resolve before confirming:</strong>
+  {% for b in blocking_skus %}
+  <div style="font-size:12px;">
+    <span style="font-family:monospace;">{{ b.jj_sku }}</span> — {{ b.product_name }} (PO: {{ b.po_number }})
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- SKU table -->
+<div class="table-card">
+  <div class="section-card-header" style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+    <h3>Allocated SKUs</h3>
+    {% if container.status == 'Planning' %}
+    <a href="{{ url_for('container.allocate', container_id=container.container_id) }}" class="btn btn-sm btn-primary">+ Allocate SKUs</a>
+    {% endif %}
+  </div>
+  <div style="overflow-x:auto;">
+  <table class="data-table" style="min-width:800px;">
+    <thead>
+      <tr>
+        <th>PO</th><th>Supplier</th>
+        <th>JJ SKU</th><th>Product</th>
+        <th>Alloc Ctns</th><th>Alloc Units</th>
+        <th>CBM</th><th>SKU Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for po_num, group in po_groups.items() %}
+      <!-- PO header row -->
+      <tr style="background:#f0f4ff;">
+        <td colspan="2" style="font-weight:700;color:#1b3a5c;padding:8px 12px;">
+          <a href="{{ url_for('po.detail', po_number=po_num) }}" style="color:#1b3a5c;text-decoration:none;font-family:monospace;">{{ po_num }}</a>
+          &nbsp;
+          {% if group.po.po_status == 'Active' %}<span class="badge badge-success">Active</span>
+          {% elif group.po.po_status == 'On Hold' %}<span class="badge badge-warning">On Hold</span>
+          {% else %}<span class="badge badge-danger">Cancelled</span>{% endif %}
+        </td>
+        <td colspan="2" style="color:#64748b;font-size:12px;padding:8px 12px;">{{ group.po.supplier_name }}</td>
+        <td style="font-weight:700;padding:8px 12px;">{{ group.total_ctns }}</td>
+        <td style="font-weight:700;padding:8px 12px;">{{ group.total_units }}</td>
+        <td style="font-weight:700;color:#1b3a5c;padding:8px 12px;">{{ "%.6f"|format(group.total_cbm) }}</td>
+        <td colspan="2" style="padding:8px 12px;"></td>
+      </tr>
+
+      <!-- One row per unique SKU -->
+      {% for sku_id, row in group.sku_rows.items() %}
+      <tr {% if row.sku.ci_pending_acknowledgement %}style="background:#fffbeb;"{% endif %}>
+        <td style="padding-left:28px;color:#94a3b8;font-size:11px;">└</td>
+        <td></td>
+        <td class="td-mono"><strong>{{ row.sku.jj_sku or '—' }}</strong></td>
+        <td>
+          {{ row.sku.product_name }}
+          {% if row.sku.ci_pending_acknowledgement %}<span class="badge badge-warning" title="CI not acknowledged">⚠ CI</span>{% endif %}
+        </td>
+        <td><strong>{{ row.total_ctns }}</strong></td>
+        <td><strong>{{ row.total_units }}</strong></td>
+        <td class="td-mono"><strong>{{ "%.6f"|format(row.total_cbm) }}</strong></td>
+        <td>
+          {% set s = row.sku.sku_status %}
+          {% if s == 'Fully Allocated' %}<span class="badge badge-info">{{ s }}</span>
+          {% elif s == 'Partially Allocated' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">{{ s }}</span>
+          {% elif s == 'Ready for Allocation' %}<span class="badge badge-success">{{ s }}</span>
+          {% else %}<span class="badge badge-warning">{{ s }}</span>{% endif %}
+        </td>
+        <td>
+          {% if container.status in ['Planning','Confirmed'] %}
+            {% if row.allocations|length == 1 %}
+              <button class="btn btn-sm btn-danger"
+                      onclick="openDeallocModal({{ row.allocations[0].id }},'{{ row.sku.jj_sku }}','{{ row.sku.product_name|replace("'","\\'")|truncate(30) }}',{{ row.allocations[0].allocated_ctns }},{{ row.allocations[0].allocated_units }})">
+                Deallocate
+              </button>
+            {% else %}
+              <button class="btn btn-sm btn-secondary"
+                      onclick="toggleSubs('subs-{{ sku_id }}', this)">
+                &#9660; {{ row.allocations|length }} allocations
+              </button>
+            {% endif %}
+          {% else %}
+            <span class="td-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+
+      <!-- Sub-rows: one per allocation record, shown when expanded -->
+      {% if row.allocations|length > 1 %}
+        {% for alloc in row.allocations %}
+        <tr id="subs-{{ sku_id }}" style="display:none;background:#fafafa;border-left:3px solid #dbeafe;">
+          <td colspan="2" style="padding:5px 12px 5px 44px;font-size:11px;color:#94a3b8;">
+            &#8627; #{{ alloc.id }} &nbsp;{{ alloc.allocated_at.strftime('%d %b %Y %H:%M') }} by {{ alloc.allocated_by or '—' }}
+          </td>
+          <td class="td-mono" style="font-size:11px;color:#64748b;">{{ alloc.allocated_ctns }} ctns</td>
+          <td style="font-size:11px;color:#64748b;">{{ alloc.allocated_units }} units</td>
+          <td style="font-size:11px;">{{ alloc.allocated_ctns }}</td>
+          <td style="font-size:11px;">{{ alloc.allocated_units }}</td>
+          <td class="td-mono" style="font-size:11px;">{{ alloc.allocated_cbm }}</td>
+          <td></td>
+          <td>
+            <button class="btn btn-sm btn-danger"
+                    onclick="openDeallocModal({{ alloc.id }},'{{ row.sku.jj_sku }} #{{ alloc.id }}','{{ row.sku.product_name|replace("'","\\'")|truncate(30) }}',{{ alloc.allocated_ctns }},{{ alloc.allocated_units }})">
+              Deallocate
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      {% endif %}
+
+      {% endfor %}
+      {% else %}
+      <tr>
+        <td colspan="9" class="empty-state">
+          No SKUs allocated yet.
+          {% if container.status == 'Planning' %}
+          <a href="{{ url_for('container.allocate', container_id=container.container_id) }}">Allocate now.</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Deallocation modal -->
+<div id="dealloc-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:480px;">
+    <h3 style="margin-bottom:8px;color:#991b1b;">Deallocate SKU</h3>
+    <p id="dealloc-summary" style="font-size:13px;color:#374151;margin-bottom:16px;background:#f8fafc;padding:10px;border-radius:6px;"></p>
+    <form id="dealloc-form" method="POST">
+      <div class="form-group">
+        <label style="font-weight:600;margin-bottom:8px;display:block;">Reason <span style="color:#dc2626;">*</span></label>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          {% for code, label in deallocation_reasons %}
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 12px;border-radius:6px;border:1px solid #e2e8f0;font-size:13px;background:#fff;"
+                 onmouseover="this.style.background='#f8fafc'"
+                 onmouseout="this.style.background='#fff'">
+            <input type="radio" name="reason_code" value="{{ code }}" required style="margin:0;">
+            <span><strong style="color:#1b3a5c;font-family:monospace;font-size:11px;">{{ code }}</strong>&nbsp;{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:1.5rem;">
+        <button type="submit" class="btn btn-danger">Confirm Deallocation</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('dealloc-modal').style.display='none'">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openDeallocModal(allocId, sku, product, ctns, units) {
+  document.getElementById('dealloc-modal').style.display = 'flex';
+  document.getElementById('dealloc-summary').innerHTML =
+    '<strong>' + sku + '</strong> — ' + product +
+    '<br><span style="font-size:12px;color:#64748b;">' + ctns + ' cartons | ' + units + ' units</span>';
+  document.getElementById('dealloc-form').action = '/containers/deallocate/' + allocId;
+  document.querySelectorAll('#dealloc-form input[type=radio]').forEach(r => r.checked = false);
+}
+function toggleSubs(id, btn) {
+  const rows = document.querySelectorAll('[id="' + id + '"]');
+  const isHidden = rows.length > 0 && rows[0].style.display === 'none';
+  rows.forEach(r => r.style.display = isHidden ? '' : 'none');
+  if (btn) btn.innerHTML = (isHidden ? '&#9650; ' : '&#9660; ') + rows.length + ' allocations';
+}
+</script>
+{% endblock %}

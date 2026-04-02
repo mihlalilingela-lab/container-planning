@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Container Planning{% endblock %} — J&J</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-title">Container Planning</span>
+    <span class="nav-company">J&amp;J</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="{{ url_for('main.dashboard') }}"
+           {% if request.endpoint == 'main.dashboard' %}class="active"{% endif %}>
+      Dashboard</a></li>
+    <li><a href="{{ url_for('po.list_pos') }}"
+           {% if request.blueprint == 'po' %}class="active"{% endif %}>
+      Purchase Orders</a></li>
+    <li><a href="{{ url_for('container.list_containers') }}"
+           {% if request.blueprint == 'container' %}class="active"{% endif %}>
+      Containers</a></li>
+    <li><a href="#" class="nav-disabled">Vessels</a></li>
+    <li><a href="#" class="nav-disabled">Reports</a></li>
+    {% if current_user.is_admin %}
+    <li class="nav-sep">|</li>
+    <li><a href="{{ url_for('admin.users') }}"
+           {% if request.blueprint == 'admin' %}class="active"{% endif %}>
+      Admin</a></li>
+    {% endif %}
+  </ul>
+  <div class="nav-user">
+    <span class="nav-username">{{ current_user.username }}</span>
+    <span class="nav-role">
+      {{ current_user.role | replace('_',' ') | title }}
+    </span>
+    <a href="{{ url_for('auth.logout') }}" class="btn-logout">Log out</a>
+  </div>
+</nav>
+{% endif %}
+<main class="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">
+        <span>{{ message }}</span>
+        <button class="flash-close"
+                onclick="this.parentElement.remove()">&#10005;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  <span>Container Planning &amp; Schedule &mdash; J&amp;J &mdash;
+    Internal Use Only</span>
+  <span>Phase 3 &mdash; MVP</span>
+</footer>
+</body>
+</html>
