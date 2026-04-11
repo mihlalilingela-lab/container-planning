@@ -274,7 +274,10 @@ def allocate_from_sku(sku_id):
             return redirect(url_for("container.allocate_from_sku",
                                     sku_id=sku_id))
 
-        _do_allocate(sku, c, alloc_ctns, warning)
+        # Unit override — allows partial last carton
+        units_override = _int(request.form.get("allocated_units_override"))
+        _do_allocate(sku, c, alloc_ctns, warning,
+                     units_override=units_override)
         return redirect(url_for("po.detail", po_number=sku.po_number))
 
     containers = Container.query.filter(
@@ -332,9 +335,15 @@ def deallocate(alloc_id):
     return redirect(url_for("container.detail", container_id=container_id))
 
 # ── Shared allocation logic ───────────────────────────────────────────────────
-def _do_allocate(sku, container, alloc_ctns, warning=None):
+def _do_allocate(sku, container, alloc_ctns, warning=None,
+                 units_override=None):
     outer_ctn_qty = sku.outer_carton_qty or 1
-    alloc_units   = alloc_ctns * outer_ctn_qty
+    # Use override if provided (partial last carton)
+    # otherwise calculate from cartons x units per carton
+    if units_override and 0 < units_override <= alloc_ctns * outer_ctn_qty:
+        alloc_units = units_override
+    else:
+        alloc_units = alloc_ctns * outer_ctn_qty
     cbm_per_ctn   = sku.volumetric_cbm or 0
     alloc_cbm     = round(cbm_per_ctn * alloc_ctns, 6)
 

@@ -17,14 +17,14 @@
 
 {% if sku.ci_pending_acknowledgement %}
 <div class="flash flash-warning" style="margin-bottom:1rem;">
-  ⚠ CI not yet acknowledged for this SKU. Allocation is permitted at
-  planning stage but the container cannot be confirmed until CI is
-  acknowledged.
+  ⚠ CI not yet acknowledged. Allocation permitted at planning stage
+  but container cannot be confirmed until CI is acknowledged.
 </div>
 {% endif %}
 
-<div class="form-card" style="max-width:480px;">
-  <form method="POST">
+<div class="form-card" style="max-width:520px;">
+  <form method="POST" id="alloc-form">
+
     <div class="form-group">
       <label>Select Container <span style="color:#dc2626;">*</span></label>
       <select name="container_id" required>
@@ -38,25 +38,41 @@
         {% endfor %}
       </select>
     </div>
-    <div class="form-group">
-      <label>
-        Number of Cartons to Allocate
-        <span style="color:#dc2626;">*</span>
-        <span class="hint">
-          (max {{ sku.pending_ctns or '?' }} cartons pending)
-        </span>
-      </label>
-      <input type="number" name="allocated_ctns" required
-             min="1" max="{{ sku.pending_ctns or 9999 }}"
-             placeholder="Enter cartons">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>
+          Cartons <span style="color:#dc2626;">*</span>
+          <span class="hint">(max {{ sku.pending_ctns or '?' }})</span>
+        </label>
+        <input type="number" name="allocated_ctns" id="alloc-ctns"
+               required min="1" max="{{ sku.pending_ctns or 9999 }}"
+               placeholder="Enter cartons"
+               oninput="calcUnits()">
+      </div>
+      <div class="form-group">
+        <label>
+          Units
+          <span class="hint">(auto-calculated — override if partial)</span>
+        </label>
+        <input type="number" name="allocated_units_override"
+               id="alloc-units" min="1"
+               placeholder="Auto">
+      </div>
     </div>
+
     {% if sku.outer_carton_qty %}
     <div class="phase-banner" style="font-size:12px;margin-bottom:1rem;">
       {{ sku.outer_carton_qty }} units per carton &nbsp;|&nbsp;
       CBM per carton:
       {{ "%.6f"|format(sku.volumetric_cbm) if sku.volumetric_cbm else '—' }}
+      &nbsp;|&nbsp;
+      <span id="cbm-preview" style="font-weight:600;">
+        CBM: —
+      </span>
     </div>
     {% endif %}
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">Allocate</button>
       <a href="{{ url_for('po.detail', po_number=sku.po_number) }}"
@@ -64,4 +80,34 @@
     </div>
   </form>
 </div>
+
+<script>
+const outerCtnQty = {{ sku.outer_carton_qty or 1 }};
+const cbmPerCtn   = {{ sku.volumetric_cbm or 0 }};
+
+function calcUnits() {
+  const ctns  = parseInt(document.getElementById('alloc-ctns').value) || 0;
+  const units = ctns * outerCtnQty;
+  const unitsField = document.getElementById('alloc-units');
+
+  // Only auto-fill if user hasn't manually overridden
+  if (!unitsField.dataset.manualOverride) {
+    unitsField.placeholder = units > 0 ? units : 'Auto';
+  }
+
+  const cbm = (cbmPerCtn * ctns).toFixed(6);
+  document.getElementById('cbm-preview').textContent =
+    ctns > 0 ? 'CBM: ' + cbm : 'CBM: —';
+}
+
+// Mark as manual override when user types in units field
+document.getElementById('alloc-units').addEventListener('input', function() {
+  if (this.value) {
+    this.dataset.manualOverride = '1';
+  } else {
+    delete this.dataset.manualOverride;
+    calcUnits();
+  }
+});
+</script>
 {% endblock %}
