@@ -23,7 +23,9 @@
     <li><a href="{{ url_for('container.list_containers') }}"
            {% if request.blueprint == 'container' %}class="active"{% endif %}>
       Containers</a></li>
-    <li><a href="#" class="nav-disabled">Vessels</a></li>
+    <li><a href="{{ url_for('vessel.list_vessels') }}"
+           {% if request.blueprint == 'vessel' %}class="active"{% endif %}>
+      Vessels</a></li>
     <li><a href="#" class="nav-disabled">Reports</a></li>
     {% if current_user.is_admin %}
     <li class="nav-sep">|</li>
@@ -60,7 +62,7 @@
 <footer class="footer">
   <span>Container Planning &amp; Schedule &mdash; J&amp;J &mdash;
     Internal Use Only</span>
-  <span>Phase 3 &mdash; MVP</span>
+  <span>Phase 4 &mdash; MVP</span>
 </footer>
 </body>
 </html>

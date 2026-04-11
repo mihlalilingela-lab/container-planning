@@ -20,12 +20,14 @@ def create_app():
     from app.routes.admin import admin_bp
     from app.routes.purchase_orders import po_bp
     from app.routes.containers import container_bp
+    from app.routes.vessels import vessel_bp
 
     app.register_blueprint(auth_bp,       url_prefix="/auth")
     app.register_blueprint(main_bp,       url_prefix="/")
     app.register_blueprint(admin_bp,      url_prefix="/admin")
     app.register_blueprint(po_bp,         url_prefix="/purchase-orders")
     app.register_blueprint(container_bp,  url_prefix="/containers")
+    app.register_blueprint(vessel_bp,     url_prefix="/vessels")
 
     with app.app_context():
         db.create_all()

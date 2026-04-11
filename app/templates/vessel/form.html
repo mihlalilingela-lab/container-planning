@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if vessel else 'Add' }} Vessel{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ 'Edit Vessel — ' + vessel.vessel_name if vessel else 'Add Vessel' }}</h2>
+  <a href="{{ url_for('vessel.list_vessels') }}" class="btn btn-secondary">← Back</a>
+</div>
+
+<div class="form-card" style="max-width:640px;">
+  <form method="POST">
+
+    <h3 class="form-section-title" style="color:#1b3a5c;">Vessel Details</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group" style="grid-column:span 2;">
+        <label>Vessel Name <span style="color:#dc2626;">*</span></label>
+        <input type="text" name="vessel_name" required
+               value="{{ vessel.vessel_name if vessel else '' }}"
+               placeholder="e.g. MSC AURORA">
+      </div>
+      <div class="form-group">
+        <label>Voyage Number</label>
+        <input type="text" name="voyage_number"
+               value="{{ vessel.voyage_number if vessel else '' }}"
+               placeholder="e.g. AW426E">
+      </div>
+      <div class="form-group">
+        <label>Carrier</label>
+        <input type="text" name="carrier"
+               value="{{ vessel.carrier if vessel else '' }}"
+               placeholder="e.g. MSC, Maersk, CMA CGM">
+      </div>
+      <div class="form-group">
+        <label>Port of Loading</label>
+        <input type="text" name="port_of_loading"
+               value="{{ vessel.port_of_loading if vessel else '' }}"
+               placeholder="e.g. Yantian">
+      </div>
+      <div class="form-group">
+        <label>Port of Discharge</label>
+        <input type="text" name="port_of_discharge"
+               value="{{ vessel.port_of_discharge if vessel else '' }}"
+               placeholder="e.g. Durban">
+      </div>
+      <div class="form-group">
+        <label>ETD <span class="hint">(Estimated Departure)</span></label>
+        <input type="date" name="etd"
+               value="{{ vessel.etd.strftime('%Y-%m-%d') if vessel and vessel.etd else '' }}">
+      </div>
+      <div class="form-group">
+        <label>ETA <span class="hint">(Estimated Arrival)</span></label>
+        <input type="date" name="eta"
+               value="{{ vessel.eta.strftime('%Y-%m-%d') if vessel and vessel.eta else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Bill of Lading Number</label>
+        <input type="text" name="bill_of_lading_no"
+               value="{{ vessel.bill_of_lading_no if vessel else '' }}"
+               placeholder="e.g. MSCUAB123456">
+      </div>
+    </div>
+
+    <hr class="form-divider">
+    <h3 class="form-section-title" style="color:#5b21b6;">Container Link</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>Container
+          <span class="hint">(internal planning ref)</span>
+        </label>
+        <select name="container_id">
+          <option value="">— No container linked —</option>
+          {% for c in containers %}
+          <option value="{{ c.container_id }}"
+            {{ 'selected' if vessel and vessel.container_id == c.container_id }}>
+            {{ c.container_id }} ({{ c.shipment_type or '?' }}) — {{ c.status }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Container Number
+          <span class="hint">(carrier ref — from booking)</span>
+        </label>
+        <input type="text" name="container_number"
+               value="{{ vessel.container_number if vessel and vessel.container_number else '' }}"
+               placeholder="e.g. MSCU1234567"
+               style="text-transform:uppercase;"
+               maxlength="20">
+        <span style="font-size:11px;color:#94a3b8;margin-top:4px;display:block;">
+          Format: 4 letters + 6–7 digits. Populated when booking is confirmed.
+        </span>
+      </div>
+    </div>
+    <div class="phase-banner" style="font-size:12px;margin-top:8px;">
+      To link multiple containers to this voyage, create one vessel record per
+      container using the same vessel name and voyage number.
+    </div>
+
+    <div class="form-actions" style="margin-top:1.5rem;">
+      <button type="submit" class="btn btn-primary">
+        {{ 'Save Changes' if vessel else 'Add Vessel' }}
+      </button>
+      <a href="{{ url_for('vessel.list_vessels') }}"
+         class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

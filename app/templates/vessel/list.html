@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Vessels{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Vessel Schedule</h2>
+  <a href="{{ url_for('vessel.create_vessel') }}" class="btn btn-primary">+ Add Vessel</a>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Vessel Name</th>
+        <th>Voyage No.</th>
+        <th>Carrier</th>
+        <th>POL</th>
+        <th>POD</th>
+        <th>ETD</th>
+        <th>ETA</th>
+        <th>B/L No.</th>
+        <th>Container ID</th>
+        <th>Container No.</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vessels %}
+      <tr>
+        <td><strong>{{ v.vessel_name }}</strong></td>
+        <td class="td-mono td-muted">{{ v.voyage_number or '—' }}</td>
+        <td>{{ v.carrier or '—' }}</td>
+        <td>{{ v.port_of_loading or '—' }}</td>
+        <td>{{ v.port_of_discharge or '—' }}</td>
+        <td class="td-mono">
+          {% if v.etd %}
+            <span style="{% if v.etd < today %}color:#059669;font-weight:600;{% endif %}">
+              {{ v.etd.strftime('%d %b %Y') }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="td-mono">{{ v.eta.strftime('%d %b %Y') if v.eta else '—' }}</td>
+        <td class="td-mono td-muted">{{ v.bill_of_lading_no or '—' }}</td>
+        <td>
+          {% if v.container %}
+            <a href="{{ url_for('container.detail', container_id=v.container_id) }}"
+               style="font-family:monospace;font-weight:700;color:#5b21b6;
+                      text-decoration:none;background:#ede9fe;
+                      padding:2px 8px;border-radius:4px;font-size:12px;">
+              {{ v.container_id }}
+            </a>
+          {% else %}
+            <span class="td-muted">—</span>
+          {% endif %}
+        </td>
+        <td class="td-mono">
+          {% if v.container_number %}
+            <span style="font-weight:600;color:#1b3a5c;">
+              {{ v.container_number }}
+            </span>
+          {% else %}
+            <span class="td-muted">— pending —</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if v.container %}
+            {% set s = v.container.status %}
+            {% if s == 'Planning' %}<span class="badge badge-warning">{{ s }}</span>
+            {% elif s == 'Confirmed' %}<span class="badge badge-info">{{ s }}</span>
+            {% elif s == 'Shipped' %}<span class="badge badge-success">{{ s }}</span>
+            {% else %}<span class="badge badge-danger">{{ s }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="td-actions">
+          <a href="{{ url_for('vessel.detail', vessel_id=v.id) }}"
+             class="btn btn-sm btn-secondary">View</a>
+          <a href="{{ url_for('vessel.edit_vessel', vessel_id=v.id) }}"
+             class="btn btn-sm btn-secondary">Edit</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="12" class="empty-state">
+          No vessels yet.
+          <a href="{{ url_for('vessel.create_vessel') }}">Add one.</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

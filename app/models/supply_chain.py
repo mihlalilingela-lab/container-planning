@@ -264,10 +264,26 @@ class Vessel(db.Model):
     port_of_discharge = db.Column(db.String(100), nullable=True)
     etd               = db.Column(db.Date,        nullable=True)
     eta               = db.Column(db.Date,        nullable=True)
-    bill_of_lading_no = db.Column(db.String(100), nullable=True)
+    bill_of_lading_no  = db.Column(db.String(100), nullable=True)
+    container_number   = db.Column(db.String(20),  nullable=True)
+    # Physical carrier container number e.g. MSCU1234567
+    # Populated when booking is confirmed — same time as vessel details
+    # One vessel links to one container per record.
+    # To link multiple containers to same voyage,
+    # create one vessel record per container — same vessel name + voyage number.
     container_id      = db.Column(db.String(50),
                                    db.ForeignKey("containers.container_id"), nullable=True)
     created_at        = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    @property
+    def sister_vessels(self):
+        """Other vessel records with same voyage number — different containers."""
+        if not self.voyage_number:
+            return []
+        return Vessel.query.filter(
+            Vessel.voyage_number == self.voyage_number,
+            Vessel.id != self.id
+        ).all()
 
     def __repr__(self):
         return f"<Vessel {self.vessel_name} | {self.voyage_number}>"
