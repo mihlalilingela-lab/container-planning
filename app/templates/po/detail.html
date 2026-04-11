@@ -294,12 +294,14 @@
                 Allocate
               </a>
             {% else %}
-              <button class="btn btn-sm btn-secondary"
-                      disabled
-                      title="{{ alloc_disabled_reason }}"
-                      style="opacity:0.45;cursor:not-allowed;">
-                Allocate
-              </button>
+              <span class="tooltip-wrap">
+                <button class="btn btn-sm btn-secondary"
+                        disabled
+                        style="opacity:0.45;cursor:not-allowed;">
+                  Allocate
+                </button>
+                <span class="tooltip-text">{{ alloc_disabled_reason }}</span>
+              </span>
             {% endif %}
 
             <a href="{{ url_for('po.edit_sku',
