@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}PO Allocation Status{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>PO Allocation Status Report</h2>
+    <p class="page-subtitle">All purchase orders and SKUs with allocation progress.</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="{{ url_for('reports.po_allocation', export='csv',
+               status=status_filter, supplier=supplier_filter) }}"
+       class="btn btn-secondary">&#8681; Export CSV</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <input type="text" name="supplier" placeholder="Search supplier..."
+           value="{{ supplier_filter }}" style="width:200px;">
+    <select name="status">
+      <option value="">All PO Statuses</option>
+      {% for s in ['Active','On Hold','Cancelled'] %}
+      <option value="{{ s }}" {{ 'selected' if status_filter == s }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{{ url_for('reports.po_allocation') }}" class="btn btn-secondary">Clear</a>
+  </form>
+</div>
+
+{% for po_num, group in po_map.items() %}
+{% set po = group.po %}
+<div class="table-card" style="margin-bottom:1.5rem;">
+  <div style="padding:10px 16px;background:#f0f4ff;border-bottom:1px solid #dbeafe;
+              display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <a href="{{ url_for('po.detail', po_number=po.po_number) }}"
+         style="font-family:monospace;font-weight:700;color:#1b3a5c;
+                text-decoration:none;font-size:14px;">
+        {{ po.po_number }}
+      </a>
+      &nbsp;
+      {% if po.po_status == 'Active' %}<span class="badge badge-success">Active</span>
+      {% elif po.po_status == 'On Hold' %}<span class="badge badge-warning">On Hold</span>
+      {% else %}<span class="badge badge-danger">Cancelled</span>{% endif %}
+      &nbsp;
+      {% set ds = po.derived_status %}
+      {% if ds == 'Fully Allocated' %}<span class="badge badge-info">Fully Allocated</span>
+      {% elif ds == 'Partially Shipped' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">Partially Shipped</span>
+      {% endif %}
+      {% if po.has_ci_variance %}<span class="badge badge-warning">⚠ CI Variance</span>{% endif %}
+    </div>
+    <div style="font-size:12px;color:#64748b;">
+      {{ po.supplier_name }} &nbsp;|&nbsp;
+      PI: {{ po.pi_number or '—' }} &nbsp;|&nbsp;
+      CI: {{ po.ci_number or '—' }} &nbsp;|&nbsp;
+      {{ po.currency or 'USD' }}
+    </div>
+  </div>
+  <div style="overflow-x:auto;">
+  <table class="data-table" style="min-width:1200px;">
+    <thead>
+      <tr>
+        <th colspan="5" style="background:#1e40af;color:#fff;text-align:center;">Order</th>
+        <th colspan="3" style="background:#065f46;color:#fff;text-align:center;border-left:2px solid #fff;">Receipt (CI)</th>
+        <th colspan="2" style="background:#92400e;color:#fff;text-align:center;border-left:2px solid #fff;">Variance</th>
+        <th colspan="4" style="background:#374151;color:#fff;text-align:center;border-left:2px solid #fff;">Allocation</th>
+        <th colspan="2" style="background:#374151;color:#fff;text-align:center;border-left:2px solid #fff;">Status</th>
+      </tr>
+      <tr style="background:#f8fafc;">
+        <th>JJ SKU</th><th>Product</th><th>HS Code</th>
+        <th>Buying Price</th><th>Buying QTY</th>
+        <th style="border-left:2px solid #d1fae5;">CI Price</th>
+        <th>CI QTY</th><th>CI Amount</th>
+        <th style="border-left:2px solid #fef3c7;">Price Var</th>
+        <th>QTY Var</th>
+        <th style="border-left:2px solid #f1f5f9;">Alloc QTY</th>
+        <th>Pending QTY</th><th>Total CBM</th>
+        <th>Container(s)</th>
+        <th style="border-left:2px solid #f1f5f9;">CRD</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sku in group.skus %}
+      {% set active_allocs = sku.allocations|selectattr('is_active')|list %}
+      {% set seen_containers = [] %}
+      <tr {% if sku.has_ci_variance %}style="background:#fff7ed;"
+          {% elif sku.ci_pending_acknowledgement %}style="background:#fffbeb;"{% endif %}>
+        <td class="td-mono"><strong>{{ sku.jj_sku or '—' }}</strong></td>
+        <td>{{ sku.product_name }}</td>
+        <td class="td-mono td-muted">{{ sku.hs_code or '—' }}</td>
+        <td>{{ po.currency }} {{ sku.buying_price or '—' }}</td>
+        <td>{{ sku.buying_qty or 0 }}</td>
+        <td style="border-left:2px solid #d1fae5;">
+          {% if sku.ci_price %}{{ po.currency }} {{ sku.ci_price }}
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td>{{ sku.ci_qty or '—' }}</td>
+        <td class="td-mono">
+          {% if sku.ci_total_amount %}{{ "%.2f"|format(sku.ci_total_amount) }}
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td style="border-left:2px solid #fef3c7;">
+          {% if sku.price_variance is not none and sku.price_variance != 0 %}
+            <span style="color:#dc2626;font-weight:700;">{{ "%.2f"|format(sku.price_variance) }}</span>
+          {% elif sku.ci_price %}<span style="color:#059669;">0.00</span>
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td>
+          {% if sku.qty_variance is not none and sku.qty_variance != 0 %}
+            <span style="color:#dc2626;font-weight:700;">{{ sku.qty_variance }}</span>
+          {% elif sku.ci_qty %}<span style="color:#059669;">0</span>
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td style="border-left:2px solid #f1f5f9;">{{ sku.allocated_qty or 0 }}</td>
+        <td>
+          {% if sku.pending_qty > 0 %}
+            <strong style="color:#d97706;">{{ sku.pending_qty }}</strong>
+          {% else %}<span style="color:#059669;">0</span>{% endif %}
+        </td>
+        <td class="td-mono">{{ sku.total_cbm or '—' }}</td>
+        <td style="min-width:120px;">
+          {% for alloc in active_allocs %}
+            {% if alloc.container_id not in seen_containers %}
+              {% if seen_containers.append(alloc.container_id) %}{% endif %}
+              <a href="{{ url_for('container.detail', container_id=alloc.container_id) }}"
+                 style="display:inline-block;margin:1px 2px;font-family:monospace;
+                        font-size:11px;font-weight:700;color:#5b21b6;
+                        text-decoration:none;background:#ede9fe;
+                        padding:2px 7px;border-radius:4px;">
+                {{ alloc.container_id }}
+              </a>
+            {% endif %}
+          {% else %}
+            <span class="td-muted" style="font-size:11px;font-style:italic;">
+              — pending —
+            </span>
+          {% endfor %}
+        </td>
+        <td style="border-left:2px solid #f1f5f9;" class="td-mono">
+          {{ sku.cargo_ready_date.strftime('%d %b %Y') if sku.cargo_ready_date else '—' }}
+        </td>
+        <td>
+          {% set s = sku.sku_status %}
+          {% if s == 'Ready for Allocation' %}<span class="badge badge-success">{{ s }}</span>
+          {% elif s == 'Fully Allocated' %}<span class="badge badge-info">{{ s }}</span>
+          {% elif s == 'Partially Allocated' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">{{ s }}</span>
+          {% elif s in ['Awaiting Production','On Hold','Pending Date'] %}<span class="badge badge-warning">{{ s }}</span>
+          {% else %}<span class="badge badge-danger">{{ s }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% else %}
+<div class="phase-banner">No purchase orders found matching the current filter.</div>
+{% endfor %}
+{% endblock %}

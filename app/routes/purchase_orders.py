@@ -195,7 +195,7 @@ def edit_sku(po_number, sku_id):
         sku.cargo_ready_date = _date(request.form.get("cargo_ready_date"))
 
         # CI acknowledgement — update working qty and force status refresh
-        if request.form.get("acknowledge_ci") and sku.ci_qty:
+        if request.form.get("acknowledge_ci"):
             old_working              = sku.total_order_qty
             sku.total_order_qty      = sku.ci_qty
             sku.ci_variance_acknowledged = True
@@ -300,11 +300,16 @@ def csv_template():
 def acknowledge_ci(po_number, sku_id):
     po  = db.session.get(PurchaseOrder, po_number)
     sku = db.session.get(SKU, sku_id)
-    if sku and po:
-        old_qty                  = sku.total_order_qty
-        sku.total_order_qty      = sku.ci_qty or sku.total_order_qty
+    if not po:
+        flash(f"PO {po_number} not found.", "danger")
+        return redirect(url_for("po.list_pos"))
+    if not sku:
+        flash(f"SKU {sku_id} not found.", "danger")
+        return redirect(url_for("po.detail", po_number=po_number))
+    try:
+        old_qty                      = sku.total_order_qty
+        sku.total_order_qty          = sku.ci_qty or sku.total_order_qty
         sku.ci_variance_acknowledged = True
-        # Recompute allocated_qty from active allocations
         sku.allocated_qty = sum(
             a.allocated_units or 0
             for a in sku.allocations
@@ -316,7 +321,12 @@ def acknowledge_ci(po_number, sku_id):
              f"CI acknowledged: {sku.jj_sku} | "
              f"Working QTY {old_qty} → {sku.total_order_qty} | "
              f"New status: {sku.sku_status}")
-        flash("CI acknowledged. Status updated.", "success")
+        flash(f"CI acknowledged for {sku.jj_sku}. "
+              f"Status: {sku.sku_status}.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error acknowledging CI: {str(e)}", "danger")
+        print(f"[ERROR] acknowledge_ci: {e}")
     return redirect(url_for("po.detail", po_number=po_number))
 
 @po_bp.route("/<po_number>/skus/<int:sku_id>/history")

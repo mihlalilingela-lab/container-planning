@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}CBM Utilisation{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Container CBM Utilisation Report</h2>
+    <p class="page-subtitle">CBM usage and remaining capacity per container.</p>
+  </div>
+  <a href="{{ url_for('reports.cbm_utilisation', export='csv') }}"
+     class="btn btn-secondary">&#8681; Export CSV</a>
+</div>
+
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+  <div class="stat-card">
+    <div class="stat-label">Total Containers</div>
+    <div class="stat-value">{{ containers|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active</div>
+    <div class="stat-value">
+      {{ containers|selectattr('status','in',['Planning','Confirmed'])|list|length }}
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Utilisation</div>
+    <div class="stat-value">
+      {% set pcts = containers|selectattr('cbm_utilisation_pct')|map(attribute='cbm_utilisation_pct')|list %}
+      {% if pcts %}{{ "%.1f"|format(pcts|sum / pcts|length) }}%{% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="stat-card stat-highlight">
+    <div class="stat-label">Total CBM Allocated</div>
+    <div class="stat-value" style="font-size:20px;">
+      {{ "%.3f"|format(containers|sum(attribute='total_cbm_used')) }}
+    </div>
+  </div>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Container ID</th><th>Type</th><th>Status</th>
+        <th>CBM Used</th><th>CBM Capacity</th><th>CBM Remaining</th>
+        <th>Utilisation</th>
+        <th>Vessel</th><th>Container No.</th><th>ETA</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in containers %}
+      {% set v = c.vessels|first if c.vessels else none %}
+      <tr>
+        <td>
+          <a href="{{ url_for('container.detail', container_id=c.container_id) }}"
+             style="font-family:monospace;font-weight:700;color:#2563eb;
+                    text-decoration:none;">{{ c.container_id }}</a>
+        </td>
+        <td>{% if c.shipment_type %}<span class="badge badge-info">{{ c.shipment_type }}</span>{% else %}—{% endif %}</td>
+        <td>
+          {% if c.status == 'Planning' %}<span class="badge badge-warning">{{ c.status }}</span>
+          {% elif c.status == 'Confirmed' %}<span class="badge badge-info">{{ c.status }}</span>
+          {% elif c.status == 'Shipped' %}<span class="badge badge-success">{{ c.status }}</span>
+          {% else %}<span class="badge badge-danger">{{ c.status }}</span>{% endif %}
+        </td>
+        <td class="td-mono"><strong>{{ c.total_cbm_used }}</strong></td>
+        <td class="td-mono">{{ c.cbm_capacity or '—' }}</td>
+        <td class="td-mono">
+          {% if c.cbm_remaining is not none %}
+            <span style="color:{% if c.cbm_remaining < 2 %}#dc2626{% elif c.cbm_remaining < 10 %}#d97706{% else %}#059669{% endif %};font-weight:600;">
+              {{ c.cbm_remaining }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if c.cbm_utilisation_pct is not none %}
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:80px;background:#e2e8f0;border-radius:99px;height:8px;">
+              <div style="width:{{ [c.cbm_utilisation_pct,100]|min }}%;
+                          background:{% if c.cbm_utilisation_pct > 90 %}#dc2626
+                          {% elif c.cbm_utilisation_pct > 75 %}#d97706
+                          {% else %}#2563eb{% endif %};
+                          border-radius:99px;height:8px;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;">
+              {{ c.cbm_utilisation_pct }}%
+            </span>
+          </div>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ v.vessel_name if v else '—' }}</td>
+        <td class="td-mono">
+          {% if v and v.container_number %}
+            <strong>{{ v.container_number }}</strong>
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td class="td-mono td-muted">
+          {{ v.eta.strftime('%d %b %Y') if v and v.eta else '—' }}
+        </td>
+        <td>
+          <a href="{{ url_for('container.detail', container_id=c.container_id) }}"
+             class="btn btn-sm btn-secondary">View</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" class="empty-state">No containers found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

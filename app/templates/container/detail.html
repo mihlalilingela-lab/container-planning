@@ -21,6 +21,8 @@
     <a href="{{ url_for('container.allocate', container_id=container.container_id) }}" class="btn btn-primary">+ Allocate SKUs</a>
     {% endif %}
     <a href="{{ url_for('container.edit_container', container_id=container.container_id) }}" class="btn btn-secondary">Edit</a>
+    <a href="{{ url_for('reports.cbm_utilisation') }}"
+       class="btn btn-secondary">&#9783; CBM Report</a>
     <a href="{{ url_for('container.list_containers') }}" class="btn btn-secondary">← Back</a>
   </div>
 </div>

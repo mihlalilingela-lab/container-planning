@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Vessel Schedule{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Vessel Schedule Report</h2>
+    <p class="page-subtitle">All vessels with ETD/ETA and linked container details.</p>
+  </div>
+  <a href="{{ url_for('reports.vessel_schedule', export='csv') }}"
+     class="btn btn-secondary">&#8681; Export CSV</a>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Vessel Name</th><th>Voyage No.</th><th>Carrier</th>
+        <th>POL</th><th>POD</th>
+        <th>ETD</th><th>ETA</th>
+        <th>B/L No.</th>
+        <th>Container ID</th><th>Container No.</th>
+        <th>Container Status</th>
+        <th>CBM Used</th><th>Utilisation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vessels %}
+      {% set c = v.container %}
+      <tr>
+        <td><strong>{{ v.vessel_name }}</strong></td>
+        <td class="td-mono td-muted">{{ v.voyage_number or '—' }}</td>
+        <td>{{ v.carrier or '—' }}</td>
+        <td>{{ v.port_of_loading or '—' }}</td>
+        <td>{{ v.port_of_discharge or '—' }}</td>
+        <td class="td-mono">
+          {% if v.etd %}
+            <span style="{% if v.etd < today %}color:#059669;font-weight:600;{% endif %}">
+              {{ v.etd.strftime('%d %b %Y') }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="td-mono">{{ v.eta.strftime('%d %b %Y') if v.eta else '—' }}</td>
+        <td class="td-mono td-muted">{{ v.bill_of_lading_no or '—' }}</td>
+        <td>
+          {% if c %}
+          <a href="{{ url_for('container.detail', container_id=v.container_id) }}"
+             style="font-family:monospace;font-weight:700;color:#5b21b6;
+                    text-decoration:none;background:#ede9fe;
+                    padding:2px 8px;border-radius:4px;font-size:12px;">
+            {{ v.container_id }}
+          </a>
+          {% else %}<span class="td-muted">—</span>{% endif %}
+        </td>
+        <td class="td-mono">
+          {% if v.container_number %}
+            <strong>{{ v.container_number }}</strong>
+          {% else %}<span class="td-muted">— pending —</span>{% endif %}
+        </td>
+        <td>
+          {% if c %}
+            {% set s = c.status %}
+            {% if s == 'Planning' %}<span class="badge badge-warning">{{ s }}</span>
+            {% elif s == 'Confirmed' %}<span class="badge badge-info">{{ s }}</span>
+            {% elif s == 'Shipped' %}<span class="badge badge-success">{{ s }}</span>
+            {% else %}<span class="badge badge-danger">{{ s }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="td-mono">{{ c.total_cbm_used if c else '—' }}</td>
+        <td>
+          {% if c and c.cbm_utilisation_pct is not none %}
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="width:60px;background:#e2e8f0;border-radius:99px;height:6px;">
+              <div style="width:{{ [c.cbm_utilisation_pct,100]|min }}%;
+                          background:#2563eb;border-radius:99px;height:6px;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:600;">
+              {{ c.cbm_utilisation_pct }}%
+            </span>
+          </div>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="13" class="empty-state">No vessels found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

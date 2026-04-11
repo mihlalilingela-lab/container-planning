@@ -26,7 +26,7 @@
     <li><a href="{{ url_for('vessel.list_vessels') }}"
            {% if request.blueprint == 'vessel' %}class="active"{% endif %}>
       Vessels</a></li>
-    <li><a href="#" class="nav-disabled">Reports</a></li>
+    <li><a href="{{ url_for('reports.index') }}" {% if request.blueprint == 'reports' %}class="active"{% endif %}>Reports</a></li>
     {% if current_user.is_admin %}
     <li class="nav-sep">|</li>
     <li><a href="{{ url_for('admin.users') }}"

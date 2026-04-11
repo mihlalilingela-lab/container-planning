@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Unallocated SKUs{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Unallocated SKUs</h2>
+    <p class="page-subtitle">All SKUs with pending quantity — forward planning view.</p>
+  </div>
+  <a href="{{ url_for('reports.unallocated', export='csv',
+             supplier=supplier_filter) }}"
+     class="btn btn-secondary">&#8681; Export CSV</a>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" style="display:flex;gap:10px;align-items:center;">
+    <input type="text" name="supplier" placeholder="Search supplier..."
+           value="{{ supplier_filter }}" style="width:200px;">
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{{ url_for('reports.unallocated') }}" class="btn btn-secondary">Clear</a>
+  </form>
+</div>
+
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+  <div class="stat-card">
+    <div class="stat-label">Unallocated SKUs</div>
+    <div class="stat-value">{{ skus|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Ready Now</div>
+    <div class="stat-value" style="color:#059669;">
+      {{ skus|selectattr('sku_status','eq','Ready for Allocation')|list|length }}
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Pending Units</div>
+    <div class="stat-value">{{ skus|sum(attribute='pending_qty') }}</div>
+  </div>
+  <div class="stat-card stat-highlight">
+    <div class="stat-label">Total Pending CBM</div>
+    <div class="stat-value" style="font-size:20px;">
+      {% set cbms = skus|selectattr('total_cbm')|map(attribute='total_cbm')|list %}
+      {% if cbms %}{{ "%.3f"|format(cbms|sum) }}{% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>PO Number</th><th>Supplier</th>
+        <th>JJ SKU</th><th>Product</th><th>HS Code</th>
+        <th>Currency</th><th>Buying Price</th>
+        <th>Buying QTY</th><th>Pending QTY</th>
+        <th>No. Ctns</th><th>Total CBM</th>
+        <th>CRD</th><th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sku in skus %}
+      <tr>
+        <td>
+          <a href="{{ url_for('po.detail', po_number=sku.po_number) }}"
+             style="font-family:monospace;color:#2563eb;text-decoration:none;font-weight:600;">
+            {{ sku.po_number }}
+          </a>
+        </td>
+        <td>{{ sku.purchase_order.supplier_name }}</td>
+        <td class="td-mono"><strong>{{ sku.jj_sku or '—' }}</strong></td>
+        <td>{{ sku.product_name }}</td>
+        <td class="td-mono td-muted">{{ sku.hs_code or '—' }}</td>
+        <td>{{ sku.purchase_order.currency or '—' }}</td>
+        <td>{{ sku.buying_price or '—' }}</td>
+        <td>{{ sku.buying_qty or 0 }}</td>
+        <td><strong style="color:#d97706;">{{ sku.pending_qty }}</strong></td>
+        <td>{{ sku.no_of_ctns or '—' }}</td>
+        <td class="td-mono">{{ sku.total_cbm or '—' }}</td>
+        <td class="td-mono">
+          {{ sku.cargo_ready_date.strftime('%d %b %Y') if sku.cargo_ready_date else '—' }}
+        </td>
+        <td>
+          {% set s = sku.sku_status %}
+          {% if s == 'Ready for Allocation' %}<span class="badge badge-success">{{ s }}</span>
+          {% elif s == 'Partially Allocated' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">{{ s }}</span>
+          {% elif s in ['Awaiting Production','Pending Date'] %}<span class="badge badge-warning">{{ s }}</span>
+          {% else %}<span class="badge badge-danger">{{ s }}</span>{% endif %}
+        </td>
+        <td>
+          {% if sku.sku_status == 'Ready for Allocation' and sku.ci_variance_acknowledged %}
+          <a href="{{ url_for('container.allocate_from_sku', sku_id=sku.id) }}"
+             class="btn btn-sm btn-primary">Allocate</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="14" class="empty-state">No unallocated SKUs found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

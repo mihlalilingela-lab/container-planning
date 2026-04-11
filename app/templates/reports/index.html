@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Reports</h2>
+  <p class="page-subtitle">Export and analyse your supply chain data.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;">
+
+  <a href="{{ url_for('reports.po_allocation') }}"
+     style="text-decoration:none;">
+    <div class="section-card" style="cursor:pointer;transition:box-shadow 0.15s;"
+         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+         onmouseout="this.style.boxShadow='none'">
+      <div class="section-card-header" style="background:#1e40af;">
+        <h3 style="color:#fff;">PO Allocation Status</h3>
+      </div>
+      <div style="padding:16px;font-size:13px;color:#374151;line-height:1.6;">
+        All POs and SKUs with allocation progress, CI variance flags,
+        container assignments, and pending quantities.
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('reports.cbm_utilisation') }}"
+     style="text-decoration:none;">
+    <div class="section-card" style="cursor:pointer;transition:box-shadow 0.15s;"
+         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+         onmouseout="this.style.boxShadow='none'">
+      <div class="section-card-header" style="background:#5b21b6;">
+        <h3 style="color:#fff;">Container CBM Utilisation</h3>
+      </div>
+      <div style="padding:16px;font-size:13px;color:#374151;line-height:1.6;">
+        CBM used, remaining capacity, and utilisation percentage
+        per container with vessel and ETA details.
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('reports.sku_readiness') }}"
+     style="text-decoration:none;">
+    <div class="section-card" style="cursor:pointer;transition:box-shadow 0.15s;"
+         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+         onmouseout="this.style.boxShadow='none'">
+      <div class="section-card-header" style="background:#065f46;">
+        <h3 style="color:#fff;">SKU Readiness</h3>
+      </div>
+      <div style="padding:16px;font-size:13px;color:#374151;line-height:1.6;">
+        All active SKUs grouped by readiness status.
+        Identify what is ready to ship vs awaiting production.
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('reports.unallocated') }}"
+     style="text-decoration:none;">
+    <div class="section-card" style="cursor:pointer;transition:box-shadow 0.15s;"
+         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+         onmouseout="this.style.boxShadow='none'">
+      <div class="section-card-header" style="background:#92400e;">
+        <h3 style="color:#fff;">Unallocated SKUs</h3>
+      </div>
+      <div style="padding:16px;font-size:13px;color:#374151;line-height:1.6;">
+        All SKUs with pending quantity. Forward planning view
+        with direct Allocate button for ready SKUs.
+      </div>
+    </div>
+  </a>
+
+  <a href="{{ url_for('reports.vessel_schedule') }}"
+     style="text-decoration:none;grid-column:span 2;">
+    <div class="section-card" style="cursor:pointer;transition:box-shadow 0.15s;"
+         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+         onmouseout="this.style.boxShadow='none'">
+      <div class="section-card-header" style="background:#1b3a5c;">
+        <h3 style="color:#fff;">Vessel Schedule</h3>
+      </div>
+      <div style="padding:16px;font-size:13px;color:#374151;line-height:1.6;">
+        All vessels with ETD/ETA, linked containers, container numbers,
+        and CBM utilisation. Full schedule view.
+      </div>
+    </div>
+  </a>
+
+</div>
+{% endblock %}
