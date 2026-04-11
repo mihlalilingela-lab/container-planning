@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db
 from app.models.user import User
-from app.models.supply_chain import AuditLog
+from app.models.supply_chain import AuditLog, DeallocationReason
 from app.auth.routes import admin_required, _log
 
 admin_bp = Blueprint("admin", __name__)
@@ -88,3 +88,63 @@ def audit_log():
         page=page, per_page=50, error_out=False
     )
     return render_template("admin/audit_log.html", logs=logs)
+
+# ── Deallocation Reason Codes ─────────────────────────────────────────────────
+@admin_bp.route("/deallocation-reasons")
+@admin_required
+def deallocation_reasons():
+    reasons = DeallocationReason.query.order_by(
+        DeallocationReason.code).all()
+    return render_template("admin/deallocation_reasons.html",
+                           reasons=reasons)
+
+@admin_bp.route("/deallocation-reasons/add", methods=["POST"])
+@admin_required
+def add_deallocation_reason():
+    label = request.form.get("label","").strip()
+    if not label:
+        flash("Reason label is required.", "danger")
+        return redirect(url_for("admin.deallocation_reasons"))
+
+    # Auto-sequence: find highest DR number and increment
+    last = DeallocationReason.query.order_by(
+        DeallocationReason.id.desc()).first()
+    if last:
+        try:
+            last_num = int(last.code.replace("DR-",""))
+            new_num  = last_num + 1
+        except ValueError:
+            new_num = DeallocationReason.query.count() + 1
+    else:
+        new_num = 1
+
+    new_code = f"DR-{new_num:02d}"
+
+    # Check for duplicate
+    if DeallocationReason.query.filter_by(code=new_code).first():
+        flash(f"Code {new_code} already exists.", "danger")
+        return redirect(url_for("admin.deallocation_reasons"))
+
+    reason = DeallocationReason(code=new_code, label=label)
+    db.session.add(reason)
+    db.session.commit()
+    _log(current_user.username, "CREATE", "deallocation_reasons",
+         new_code, f"Added: {new_code} — {label}")
+    flash(f"Reason code {new_code} added.", "success")
+    return redirect(url_for("admin.deallocation_reasons"))
+
+@admin_bp.route("/deallocation-reasons/<int:reason_id>/toggle",
+                methods=["POST"])
+@admin_required
+def toggle_deallocation_reason(reason_id):
+    reason = db.session.get(DeallocationReason, reason_id)
+    if not reason:
+        flash("Reason not found.", "danger")
+        return redirect(url_for("admin.deallocation_reasons"))
+    reason.is_active = not reason.is_active
+    db.session.commit()
+    action = "activated" if reason.is_active else "deactivated"
+    _log(current_user.username, "UPDATE", "deallocation_reasons",
+         reason.code, f"{reason.code} {action}")
+    flash(f"{reason.code} {action}.", "success")
+    return redirect(url_for("admin.deallocation_reasons"))

@@ -13,6 +13,11 @@ class Config:
     ADMIN_EMAIL    = "admin@jj-internal.local"
     ADMIN_PASSWORD = "ChangeMe123!"
 
+    # ── Password recovery token ──────────────────────────────────────────
+    # Keep this secret. Used to access /recover without logging in.
+    # Change this to something only you know before first use.
+    RECOVERY_TOKEN = "J&J-Recovery-2026"
+
 class DevelopmentConfig(Config):
     DEBUG = True
     TESTING = False

@@ -4,7 +4,8 @@ from flask import (Blueprint, render_template, redirect,
 from flask_login import current_user
 from app import db
 from app.models.supply_chain import (Container, Vessel, Allocation,
-                                      SKU, PurchaseOrder, AuditLog)
+                                      SKU, PurchaseOrder, AuditLog,
+                                      DeallocationReason)
 from app.auth.routes import supply_chain_required
 from app.services.sku_status import (refresh_sku_statuses,
                                       check_sku_allocation_eligibility,
@@ -12,17 +13,12 @@ from app.services.sku_status import (refresh_sku_statuses,
 
 container_bp = Blueprint("container", __name__)
 
-DEALLOCATION_REASONS = [
-    ("DR-01", "Cargo not ready — CRD pushed out"),
-    ("DR-02", "CI variance unresolved"),
-    ("DR-03", "Payment issue — PO on hold"),
-    ("DR-04", "Container space constraint"),
-    ("DR-05", "Supplier delay"),
-    ("DR-06", "Quantity amendment"),
-    ("DR-07", "Container cancelled"),
-    ("DR-08", "Shipped separately"),
-    ("DR-09", "Customer / buyer request"),
-]
+def get_deallocation_reasons():
+    """Load active reason codes from database."""
+    reasons = DeallocationReason.query.filter_by(
+        is_active=True
+    ).order_by(DeallocationReason.code).all()
+    return [(r.code, r.label) for r in reasons]
 
 CONTAINER_PRESETS = [
     ("", "— Select preset or enter manually —"),
@@ -105,7 +101,7 @@ def detail(container_id):
                            po_groups=po_groups,
                            can_confirm=can_confirm,
                            blocking_skus=blocking_skus,
-                           deallocation_reasons=DEALLOCATION_REASONS)
+                           deallocation_reasons=get_deallocation_reasons())
 
 # ── Create Container ──────────────────────────────────────────────────────────
 @container_bp.route("/new", methods=["GET", "POST"])
@@ -302,7 +298,7 @@ def deallocate(alloc_id):
                                 container_id=alloc.container_id))
 
     reason_label = next(
-        (label for code, label in DEALLOCATION_REASONS
+        (label for code, label in get_deallocation_reasons()
          if code == reason_code), reason_code
     )
 

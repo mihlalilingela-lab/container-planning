@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Recovery — Container Planning J&J</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="login-page">
+<div class="login-card">
+  <div class="login-header">
+    <h1>Password Recovery</h1>
+    <p>J&amp;J Supply Chain — Internal System</p>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}" style="margin-bottom:12px;">
+        {{ message }}
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="flash flash-warning" style="margin-bottom:1.5rem;font-size:12px;">
+    This page is for account recovery only. You will need the
+    recovery token set by your administrator.
+  </div>
+
+  <form method="POST" action="{{ url_for('auth.recover') }}">
+    <div class="form-group">
+      <label for="token">Recovery Token <span style="color:#dc2626;">*</span></label>
+      <input type="password" id="token" name="token" required
+             placeholder="Enter recovery token">
+    </div>
+    <div class="form-group">
+      <label for="username">Username <span style="color:#dc2626;">*</span></label>
+      <input type="text" id="username" name="username" required
+             placeholder="Enter username to reset">
+    </div>
+    <div class="form-group">
+      <label for="new_password">
+        New Password <span class="hint">(min 8 characters)</span>
+      </label>
+      <input type="password" id="new_password" name="new_password"
+             required minlength="8">
+    </div>
+    <div class="form-group">
+      <label for="confirm_password">Confirm New Password</label>
+      <input type="password" id="confirm_password"
+             name="confirm_password" required minlength="8">
+    </div>
+    <button type="submit" class="btn btn-primary btn-full">
+      Reset Password
+    </button>
+  </form>
+
+  <div style="text-align:center;margin-top:1rem;">
+    <a href="{{ url_for('auth.login') }}"
+       style="font-size:12px;color:#64748b;">← Back to Login</a>
+  </div>
+
+  <p class="login-footer">Confidential — Internal Use Only</p>
+</div>
+</body>
+</html>

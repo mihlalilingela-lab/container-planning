@@ -34,7 +34,29 @@ def create_app():
     with app.app_context():
         db.create_all()
         _seed_admin(app)
+        _seed_deallocation_reasons(app)
     return app
+
+def _seed_deallocation_reasons(app):
+    """Seed default DR codes if none exist."""
+    from app.models.supply_chain import DeallocationReason
+    if DeallocationReason.query.count() == 0:
+        defaults = [
+            ("DR-01", "Cargo not ready — CRD pushed out"),
+            ("DR-02", "CI variance unresolved"),
+            ("DR-03", "Payment issue — PO on hold"),
+            ("DR-04", "Container space constraint"),
+            ("DR-05", "Supplier delay"),
+            ("DR-06", "Quantity amendment"),
+            ("DR-07", "Container cancelled"),
+            ("DR-08", "Shipped separately"),
+            ("DR-09", "Customer / buyer request"),
+        ]
+        for code, label in defaults:
+            db.session.add(DeallocationReason(code=code, label=label))
+        db.session.commit()
+        print(f"[SEED] {len(defaults)} deallocation reason codes added.")
+
 
 def _seed_admin(app):
     from app.models.user import User

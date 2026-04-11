@@ -90,3 +90,54 @@ def change_password():
             flash("Password updated successfully.", "success")
             return redirect(url_for("main.dashboard"))
     return render_template("auth/change_password.html")
+
+# ── Password Recovery ─────────────────────────────────────────────────────────
+@auth_bp.route("/recover", methods=["GET", "POST"])
+def recover():
+    """
+    Token-protected password recovery page.
+    No login required — protected by recovery token from config.py.
+    """
+    from config import config
+    if request.method == "POST":
+        token    = request.form.get("token","").strip()
+        username = request.form.get("username","").strip()
+        new_pw   = request.form.get("new_password","")
+        confirm  = request.form.get("confirm_password","")
+
+        if token != config.RECOVERY_TOKEN:
+            flash("Invalid recovery token.", "danger")
+            return render_template("auth/recover.html")
+
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            flash(f"Username '{username}' not found.", "danger")
+            return render_template("auth/recover.html")
+
+        if len(new_pw) < 8:
+            flash("Password must be at least 8 characters.", "danger")
+            return render_template("auth/recover.html")
+
+        if new_pw != confirm:
+            flash("Passwords do not match.", "danger")
+            return render_template("auth/recover.html")
+
+        user.set_password(new_pw)
+        user.must_change_password = True
+        db.session.commit()
+
+        entry = AuditLog(
+            username="RECOVERY",
+            action="UPDATE",
+            table_name="users",
+            record_id=str(user.id),
+            detail=f"Password reset via recovery page for {username}"
+        )
+        db.session.add(entry)
+        db.session.commit()
+
+        flash(f"Password for '{username}' has been reset. "
+              f"Please log in with your new password.", "success")
+        return redirect(url_for("auth.login"))
+
+    return render_template("auth/recover.html")

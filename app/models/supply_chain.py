@@ -314,6 +314,19 @@ class Allocation(db.Model):
                 f"ctns={self.allocated_ctns} active={self.is_active}>")
 
 
+class DeallocationReason(db.Model):
+    __tablename__ = "deallocation_reasons"
+    id          = db.Column(db.Integer,    primary_key=True, autoincrement=True)
+    code        = db.Column(db.String(10), unique=True, nullable=False)
+    label       = db.Column(db.String(200), nullable=False)
+    is_active   = db.Column(db.Boolean,    default=True, nullable=False)
+    created_at  = db.Column(db.DateTime,
+                             default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<DeallocationReason {self.code} — {self.label}>"
+
+
 class AuditLog(db.Model):
     __tablename__ = "audit_log"
     id         = db.Column(db.Integer,     primary_key=True, autoincrement=True)
