@@ -7,7 +7,7 @@ load_dotenv()
 class config:
     # ── Core ─────────────────────────────────────────────────────────────────
     SECRET_KEY = os.environ.get("SECRET_KEY") or "fallback-dev-key-change-in-production"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///data/container_app.db"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "container_app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ── Admin seed account ────────────────────────────────────────────────────
