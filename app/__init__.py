@@ -1,27 +1,52 @@
-from flask import Flask
+from flask import Flask, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from datetime import timedelta, datetime, timezone
 
-db = SQLAlchemy()
+db           = SQLAlchemy()
 login_manager = LoginManager()
+limiter       = Limiter(key_func=get_remote_address)
 
 def create_app():
     app = Flask(__name__)
     from config import config
     app.config.from_object(config)
+
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = "auth.login"
-    login_manager.login_message = "Please log in to access this page."
+    limiter.init_app(app)
+
+    login_manager.login_view          = "auth.login"
+    login_manager.login_message       = "Please log in to access this page."
     login_manager.login_message_category = "warning"
 
-    from app.auth.routes import auth_bp
-    from app.routes.main import main_bp
-    from app.routes.admin import admin_bp
+    # ── Session timeout ───────────────────────────────────────────────────────
+    app.permanent_session_lifetime = timedelta(seconds=1800)
+
+    @app.before_request
+    def check_session_timeout():
+        if current_user.is_authenticated:
+            last_active = session.get("last_active")
+            now = datetime.now(timezone.utc).timestamp()
+            if last_active and (now - last_active) > 1800:
+                from flask_login import logout_user
+                from flask import flash
+                logout_user()
+                session.clear()
+                flash("Your session expired. Please log in again.", "warning")
+                return redirect(url_for("auth.login"))
+            session["last_active"] = now
+            session.permanent = True
+
+    from app.auth.routes    import auth_bp
+    from app.routes.main    import main_bp
+    from app.routes.admin   import admin_bp
     from app.routes.purchase_orders import po_bp
-    from app.routes.containers import container_bp
-    from app.routes.vessels import vessel_bp
-    from app.routes.reports import reports_bp
+    from app.routes.containers      import container_bp
+    from app.routes.vessels         import vessel_bp
+    from app.routes.reports         import reports_bp
 
     app.register_blueprint(auth_bp,       url_prefix="/auth")
     app.register_blueprint(main_bp,       url_prefix="/")
@@ -35,28 +60,8 @@ def create_app():
         db.create_all()
         _seed_admin(app)
         _seed_deallocation_reasons(app)
+
     return app
-
-def _seed_deallocation_reasons(app):
-    """Seed default DR codes if none exist."""
-    from app.models.supply_chain import DeallocationReason
-    if DeallocationReason.query.count() == 0:
-        defaults = [
-            ("DR-01", "Cargo not ready — CRD pushed out"),
-            ("DR-02", "CI variance unresolved"),
-            ("DR-03", "Payment issue — PO on hold"),
-            ("DR-04", "Container space constraint"),
-            ("DR-05", "Supplier delay"),
-            ("DR-06", "Quantity amendment"),
-            ("DR-07", "Container cancelled"),
-            ("DR-08", "Shipped separately"),
-            ("DR-09", "Customer / buyer request"),
-        ]
-        for code, label in defaults:
-            db.session.add(DeallocationReason(code=code, label=label))
-        db.session.commit()
-        print(f"[SEED] {len(defaults)} deallocation reason codes added.")
-
 
 def _seed_admin(app):
     from app.models.user import User
@@ -72,3 +77,22 @@ def _seed_admin(app):
         db.session.add(admin)
         db.session.commit()
         print(f"[SEED] Admin account created: {config.ADMIN_USERNAME}")
+
+def _seed_deallocation_reasons(app):
+    from app.models.supply_chain import DeallocationReason
+    if DeallocationReason.query.count() == 0:
+        defaults = [
+            ("DR-01","Cargo not ready — CRD pushed out"),
+            ("DR-02","CI variance unresolved"),
+            ("DR-03","Payment issue — PO on hold"),
+            ("DR-04","Container space constraint"),
+            ("DR-05","Supplier delay"),
+            ("DR-06","Quantity amendment"),
+            ("DR-07","Container cancelled"),
+            ("DR-08","Shipped separately"),
+            ("DR-09","Customer / buyer request"),
+        ]
+        for code, label in defaults:
+            db.session.add(DeallocationReason(code=code, label=label))
+        db.session.commit()
+        print(f"[SEED] {len(defaults)} deallocation reason codes added.")

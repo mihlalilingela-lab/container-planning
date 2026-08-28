@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Container Planning{% endblock %} — J&J</title>
+  <title>{% block title %}Container Planning{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <body>
@@ -11,7 +11,6 @@
 <nav class="navbar">
   <div class="nav-brand">
     <span class="nav-title">Container Planning</span>
-    <span class="nav-company">J&amp;J</span>
   </div>
   <ul class="nav-links">
     <li><a href="{{ url_for('main.dashboard') }}"
@@ -60,8 +59,7 @@
   {% block content %}{% endblock %}
 </main>
 <footer class="footer">
-  <span>Container Planning &amp; Schedule &mdash; J&amp;J &mdash;
-    Internal Use Only</span>
+  <span>Container Planning &amp; Schedule &mdash; Internal Use Only</span>
   <span>Phase 4 &mdash; MVP</span>
 </footer>
 </body>

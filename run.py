@@ -4,7 +4,7 @@ app = create_app()
 
 if __name__ == "__main__":
     print("")
-    print("  Container Planning & Schedule — J&J")
+    print("  Container Planning & Schedule")
     print("  ─────────────────────────────────────")
     print("  Open your browser and go to:")
     print("  http://localhost:5000")

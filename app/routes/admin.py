@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import current_user
 from app import db
 from app.models.user import User
-from app.models.supply_chain import AuditLog, DeallocationReason
+from app.models.supply_chain import AuditLog, DeallocationReason, ERPConnection
 from app.auth.routes import admin_required, _log
 
 admin_bp = Blueprint("admin", __name__)
@@ -148,3 +148,53 @@ def toggle_deallocation_reason(reason_id):
          reason.code, f"{reason.code} {action}")
     flash(f"{reason.code} {action}.", "success")
     return redirect(url_for("admin.deallocation_reasons"))
+
+# ── ERP Connections ───────────────────────────────────────────────────────────
+@admin_bp.route("/erp-connections")
+@admin_required
+def erp_connections():
+    connections = ERPConnection.query.order_by(
+        ERPConnection.erp_name).all()
+    return render_template("admin/erp_connections.html",
+                           connections=connections)
+
+@admin_bp.route("/erp-connections/add", methods=["POST"])
+@admin_required
+def add_erp_connection():
+    erp_name = request.form.get("erp_name","").strip()
+    erp_type = request.form.get("erp_type","").strip()
+    if not erp_name or not erp_type:
+        flash("ERP name and type are required.", "danger")
+        return redirect(url_for("admin.erp_connections"))
+    conn = ERPConnection(
+        erp_name = erp_name,
+        erp_type = erp_type,
+        base_url = request.form.get("base_url","").strip() or None,
+        notes    = request.form.get("notes","").strip() or None,
+        is_active = False,
+    )
+    db.session.add(conn)
+    db.session.commit()
+    _log(current_user.username,"CREATE","erp_connections",
+         str(conn.id), f"ERP connection added: {erp_name} ({erp_type})")
+    flash(f"ERP connection '{erp_name}' added.", "success")
+    return redirect(url_for("admin.erp_connections"))
+
+@admin_bp.route("/erp-connections/<int:conn_id>/edit",
+                methods=["GET","POST"])
+@admin_required
+def edit_erp_connection(conn_id):
+    conn = db.session.get(ERPConnection, conn_id)
+    if not conn:
+        flash("Connection not found.", "danger")
+        return redirect(url_for("admin.erp_connections"))
+    if request.method == "POST":
+        conn.erp_name  = request.form.get("erp_name","").strip()
+        conn.base_url  = request.form.get("base_url","").strip() or None
+        conn.notes     = request.form.get("notes","").strip() or None
+        db.session.commit()
+        _log(current_user.username,"UPDATE","erp_connections",
+             str(conn_id), f"ERP connection updated: {conn.erp_name}")
+        flash("Connection updated.", "success")
+        return redirect(url_for("admin.erp_connections"))
+    return render_template("admin/erp_connection_edit.html", conn=conn)

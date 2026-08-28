@@ -10,12 +10,12 @@
   <form method="POST">
     <div class="form-group">
       <label>Container ID <span style="color:#dc2626;">*</span>
-        <span class="hint">(e.g. CN FCL 41)</span>
+        <span class="hint">(e.g. CTR-001)</span>
       </label>
       <input type="text" name="container_id"
              value="{{ container.container_id if container else '' }}"
              {{ 'readonly style=background:#f8fafc' if container else 'required' }}
-             placeholder="e.g. CN FCL 41">
+             placeholder="e.g. CTR-001">
     </div>
     <div class="form-group">
       <label>Shipment Type</label>

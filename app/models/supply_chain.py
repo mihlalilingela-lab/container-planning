@@ -314,6 +314,36 @@ class Allocation(db.Model):
                 f"ctns={self.allocated_ctns} active={self.is_active}>")
 
 
+class ERPConnection(db.Model):
+    """
+    Stores ERP integration configurations.
+    Credentials encrypted — never stored in plain text.
+    One record per ERP connection.
+    """
+    __tablename__ = "erp_connections"
+    id           = db.Column(db.Integer,      primary_key=True)
+    erp_name     = db.Column(db.String(100),  nullable=False)
+    erp_type     = db.Column(db.String(50),   nullable=False)
+    # erp_type options: dear, unleashed, myob, netsuite, sap, generic
+    base_url     = db.Column(db.String(500),  nullable=True)
+    is_active    = db.Column(db.Boolean,      default=False)
+    last_sync    = db.Column(db.DateTime,     nullable=True)
+    sync_status  = db.Column(db.String(200),  nullable=True)
+    # Credentials stored as JSON — encrypted in Phase 6
+    # For now stored as plaintext — Phase 6 adds encryption
+    credentials  = db.Column(db.Text,         nullable=True)
+    field_map    = db.Column(db.Text,         nullable=True)
+    created_at   = db.Column(db.DateTime,
+                              default=lambda: datetime.now(timezone.utc))
+    updated_at   = db.Column(db.DateTime,
+                              default=lambda: datetime.now(timezone.utc),
+                              onupdate=lambda: datetime.now(timezone.utc))
+    notes        = db.Column(db.Text,         nullable=True)
+
+    def __repr__(self):
+        return f"<ERPConnection {self.erp_name} ({self.erp_type})>"
+
+
 class DeallocationReason(db.Model):
     __tablename__ = "deallocation_reasons"
     id          = db.Column(db.Integer,    primary_key=True, autoincrement=True)

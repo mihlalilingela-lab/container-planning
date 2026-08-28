@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from app import db
+from app import db, limiter
 from app.models.user import User
 from app.models.supply_chain import AuditLog
 
@@ -38,6 +38,7 @@ def _log(username, action, table_name=None, record_id=None, detail=None):
     db.session.commit()
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
